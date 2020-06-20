@@ -9,3 +9,9 @@
 
 1. rlk_5.0：实验平台的主 分支。
 2. zh_comments： 中文注释分支。
+
+## patch要求
+
+所有代码patch都必须经过checkpatch.pl脚本的检查。
+
+$ git diff | ./scripts/checkpatch.pl --no-tree
