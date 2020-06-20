@@ -1,0 +1,39 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+CFLAGS	makefile	/^CFLAGS=-g -std=gnu99 -O2 -pthread -Wall$/;"	m	language:Make
+CODE_SIZE	dump_sys_regs.c	132;"	d	language:C	file:
+codebuf	dump_sys_regs.c	/^uint32_t *codebuf;$/;"	v	language:C
+counter	dump_sys_regs.c	/^volatile uint64_t counter = 0;$/;"	v	language:C
+crm	dump_sys_regs.c	/^  uint32_t crm;$/;"	m	language:C	struct:__anon1	file:
+crn	dump_sys_regs.c	/^  uint32_t crn;$/;"	m	language:C	struct:__anon1	file:
+do_spec_read	dump_sys_regs.c	/^spec_read_fn do_spec_read;$/;"	v	language:C
+flush	dump_sys_regs.c	/^void flush(void *addr, size_t n, size_t stride) {$/;"	f	language:C	signature:(void *addr, size_t n, size_t stride)
+get_mrs	dump_sys_regs.c	/^uint32_t get_mrs(uint64_t op0, uint64_t op1, uint64_t crn, uint64_t crm, uint64_t op2) {$/;"	f	language:C	signature:(uint64_t op0, uint64_t op1, uint64_t crn, uint64_t crm, uint64_t op2)
+get_value	dump_sys_regs.c	/^void get_value(int i, siginfo_t *info, void *ctx) {$/;"	f	language:C	signature:(int i, siginfo_t *info, void *ctx)
+inc_counter	dump_sys_regs.c	/^void *inc_counter(void *a) {$/;"	f	language:C	signature:(void *a)
+main	dump_sys_regs.c	/^int main() {$/;"	f	language:C
+measure_latency	dump_sys_regs.c	/^uint64_t measure_latency() {$/;"	f	language:C
+miss_min	dump_sys_regs.c	/^uint64_t miss_min;$/;"	v	language:C
+name	dump_sys_regs.c	/^  char *name;$/;"	m	language:C	struct:__anon1	file:
+op0	dump_sys_regs.c	/^  uint32_t op0;$/;"	m	language:C	struct:__anon1	file:
+op1	dump_sys_regs.c	/^  uint32_t op1;$/;"	m	language:C	struct:__anon1	file:
+op2	dump_sys_regs.c	/^  uint32_t op2;$/;"	m	language:C	struct:__anon1	file:
+probe	dump_sys_regs.c	/^uint8_t *probe;$/;"	v	language:C
+probe_size	dump_sys_regs.c	/^const size_t probe_size = 2 * probe_stride;$/;"	v	language:C
+probe_stride	dump_sys_regs.c	63;"	d	language:C	file:
+read_bit	dump_sys_regs.c	/^volatile int read_bit;$/;"	v	language:C
+read_register	dump_sys_regs.c	/^int read_register(uint64_t *val, uint32_t op0, uint32_t op1, uint32_t crn, uint32_t crm, uint32_t op2) {$/;"	f	language:C	signature:(uint64_t *val, uint32_t op0, uint32_t op1, uint32_t crn, uint32_t crm, uint32_t op2)
+read_registers	dump_sys_regs.c	/^void read_registers() {$/;"	f	language:C
+spec_read	sregs.S	/^spec_read:$/;"	l	language:Asm
+spec_read_fn	dump_sys_regs.c	/^typedef void (*spec_read_fn)(void *probe_buf, void *miss_buf, uint64_t bit);$/;"	t	language:C	file:
+spec_read_wrapper	dump_sys_regs.c	/^void spec_read_wrapper(void *probe, void *miss_buf, uint64_t bit) {$/;"	f	language:C	signature:(void *probe, void *miss_buf, uint64_t bit)
+sysreg	dump_sys_regs.c	/^} sysreg;$/;"	t	language:C	typeref:struct:__anon1	file:
+sysregs	sregs.h	/^const sysreg sysregs[] = {$/;"	v	language:C++
+timed_read	dump_sys_regs.c	/^uint64_t timed_read(uint8_t *addr) {$/;"	f	language:C	signature:(uint8_t *addr)
+zrbf	dump_sys_regs.c	/^uintptr_t *zrbf;$/;"	v	language:C
+zrbf_size	dump_sys_regs.c	/^const size_t zrbf_size = 10 * zrbf_stride * sizeof(uintptr_t);$/;"	v	language:C
+zrbf_stride	dump_sys_regs.c	65;"	d	language:C	file:
