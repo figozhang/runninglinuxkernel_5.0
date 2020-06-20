@@ -13,5 +13,6 @@
 ## patch要求
 
 所有代码patch都必须经过checkpatch.pl脚本的检查。
-
+```
 $ git diff | ./scripts/checkpatch.pl --no-tree
+```
