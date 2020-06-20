@@ -7,5 +7,5 @@
 
 欢迎大家来提pull request，主要提pull request到zh_comments这个分支。
 
-rlk_5.0：实验平台的主 分支。
-zh_comments： 中文注释分支。
+1. rlk_5.0：实验平台的主 分支。
+2. zh_comments： 中文注释分支。
