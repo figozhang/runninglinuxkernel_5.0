@@ -10,13 +10,7 @@
 1. rlk_5.0：实验平台的主开发分支。
 2. zh_comments： 中文注释分支。
 
-## 3. patch要求
-
-所有patch尽可能地经过checkpatch.pl脚本的检查。
-```
-$ git diff | ./scripts/checkpatch.pl --no-tree
-```
-## 4. 提pr流程
+## 3. 提pr流程
 1. clone：
 
 ```
@@ -29,8 +23,14 @@ $ git checkout zh_comments
 $ git checkout -b zh_comments_1
 ```
 3. 为自己感兴趣的模块添加注释
-4. push 这个分支：zh_comments_1
+4. 检查patch格式（可选）
+所有patch尽可能地经过checkpatch.pl脚本的检查。
 ```
-$ git push origin zh_comments_1
+$ git diff | ./scripts/checkpatch.pl --no-tree
 ```
-5. 到主仓库网页提交pr，选择目标分支为：zh_comments，就会有自有分支到zh_comments的合并请求
+
+5. push 这个分支：zh_comments_1
+```
+$ git push --set-upstream origin zh_comments_1
+```
+6. 到主仓库网页提交pr，选择目标分支为：zh_comments，就会有自有分支到zh_comments的合并请求
