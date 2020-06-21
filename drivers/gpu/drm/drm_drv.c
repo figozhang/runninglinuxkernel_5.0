@@ -893,6 +893,13 @@ int drm_dev_set_unique(struct drm_device *dev, const char *name)
 }
 EXPORT_SYMBOL(drm_dev_set_unique);
 
+
+/*
+ * DRM Core
+ * DRM 核心驱动模块将初始化所有全局DRM对象并使其对各实体驱动可用。
+ * 一旦设置好，实体驱动就可以探测到他们所负责的设备。
+ */
+
 /*
  * DRM Core
  * The DRM core module initializes all global DRM objects and makes them
@@ -962,6 +969,10 @@ static void drm_core_exit(void)
 	drm_connector_ida_destroy();
 }
 
+/*
+ * DRM Core
+ * DRM 核心驱动的初始化函数
+ */
 static int __init drm_core_init(void)
 {
 	int ret;
