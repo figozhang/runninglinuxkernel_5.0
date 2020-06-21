@@ -24,6 +24,7 @@ $ git checkout -b zh_comments_1
 ```
 3. 为自己感兴趣的模块添加注释
 4. 检查patch格式（可选）
+
 所有patch尽可能地经过checkpatch.pl脚本的检查。
 ```
 $ git diff | ./scripts/checkpatch.pl --no-tree
