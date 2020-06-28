@@ -224,6 +224,34 @@ static inline struct drm_printer drm_debug_printer(const char *prefix)
 }
 
 /*
+ * 调试主要定义了如下几个类别:
+ *
+ * CORE:   在DRM通用代码drm_ioctl.c, drm_mm.c, drm_memory.c, ...中使用
+ *         通过宏DRM_DEBUG()使用
+ * DRIVER: 在厂商特定的驱动如i915, radeon, ...中使用
+ *         通过宏DRM_DEBUG_DRIVER()使用
+ * KMS:    在模式设置代码中使用
+ *         通过宏DRM_DEBUG_KMS()使用
+ * PRIME:  在prime代码中使用
+ *         通过宏DRM_DEBUG_PRIME()使用
+ * ATOMIC: 在atomic代码中使用
+ *         通过宏DRM_DEBUG_ATOMIC()使用
+ * VBL:    在vblank代码中使用
+ *         通过宏DRM_DEBUG_VBL()使用
+ *
+ * 可以通过传递drm.debug内核参数，设置对应的bit位来使能上述调试信息输出
+ *
+ * drm.debug=0x1 使能CORE的调试信息
+ * drm.debug=0x2 使能DRIVER的调试信息
+ * drm.debug=0x3 使能CORE和DRIVER的调试信息
+ * ...
+ * drm.debug=0x3f 使能所有的调试信息(实际上目前应该是0x1ff)
+ *
+ * 还有一种有意思的特性可以通过sysfs节点在运行时动态的激活调试信息输出:
+ *   # echo 0xf > /sys/module/drm/parameters/debug
+ */
+
+/*
  * The following categories are defined:
  *
  * CORE: Used in the generic drm code: drm_ioctl.c, drm_mm.c, drm_memory.c, ...
