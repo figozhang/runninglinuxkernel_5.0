@@ -3311,6 +3311,7 @@ static inline void schedule_debug(struct task_struct *prev)
 
 /*
  * Pick up the highest-prio task:
+ * 选出当前可运行的最高优先级的进程
  */
 static inline struct task_struct *
 pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
@@ -3324,6 +3325,10 @@ pick_next_task(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 	 * higher scheduling class, because otherwise those loose the
 	 * opportunity to pull in more work from other CPUs.
 	 */
+    /*
+     * 这里有个优化: 大部分情况下，系统中只有 调度策略为 cfs 的任务，
+     * rt和dl调度策略 的 进程数 可能是0
+     */
 	if (likely((prev->sched_class == &idle_sched_class ||
 		    prev->sched_class == &fair_sched_class) &&
 		   rq->nr_running == rq->cfs.h_nr_running)) {
