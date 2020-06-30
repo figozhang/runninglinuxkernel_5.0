@@ -44,6 +44,24 @@
 #include "drm_crtc_internal.h"
 
 /*
+ * drm_debug: 使能调试输出
+ * 相关掩码(DRM_UT_x)，参考include/drm/drmP.h
+ * (实际应该是后来从该文件中分离出的drm_print.h)文件
+ * 
+ * #define DRM_UT_NONE          0x00
+ * #define DRM_UT_CORE          0x01
+ * #define DRM_UT_DRIVER        0x02
+ * #define DRM_UT_KMS           0x04
+ * #define DRM_UT_PRIME         0x08
+ * #define DRM_UT_ATOMIC        0x10
+ * #define DRM_UT_VBL           0x20
+ * #define DRM_UT_STATE         0x40
+ * #define DRM_UT_LEASE         0x80
+ * #define DRM_UT_DP		0x100
+ *
+ */
+
+/*
  * drm_debug: Enable debug output.
  * Bitmask of DRM_UT_x. See include/drm/drmP.h for details.
  */
@@ -66,6 +84,14 @@ module_param_named(debug, drm_debug, int, 0600);
 
 static DEFINE_SPINLOCK(drm_minor_lock);
 static struct idr drm_minors_idr;
+
+/*
+ * 如果DRM Core因为某种原因初始化失败，则需要避免任何驱动进行注册
+ * 最好在drm_dev_init()对其进行检查，因为有些驱动喜欢将drm_device
+ * 数据结构嵌入到他们自己的设备数据结构中，然后调用drm_dev_init()进
+ * 行初始化
+ * (这是个全局的初始化标志)
+ */
 
 /*
  * If the drm core fails to init for whatever reason,
