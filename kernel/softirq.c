@@ -246,6 +246,30 @@ static inline bool lockdep_softirq_start(void) { return false; }
 static inline void lockdep_softirq_end(bool in_hardirq) { }
 #endif
 
+/*
+ * 执行软中断, 下面 4 个场景可能会调用到这个函数
+ *
+ * 1. 中断返回时判断待处理的软中断并执行
+ * 2. ksoftirqd 会调用这个函数 (非中断上下文调用 raise_softirq 会唤醒 ksoftirqd)
+ * 3. spin_unlock 也可能会处理软中断(do_softirq->do_softirq_own_stack->__do_softirq)
+ * 4. 网络子系统种会显式判断待处理的软中断并调用 do_softirq 执行
+ *    (do_softirq->do_softirq_own_stack->__do_softirq)
+ *
+ * 不管是在 ksoftirqd 还是中断返回, 调用这个函数的时候内核都是不可抢占的. 也就是说进程
+ * 无法抢占这个函数的运行. 那在这个函数中就要有主动放弃 CPU 的机制. 否则 CPU 可能会死在
+ * 这个函数出不去. 最简单的场景, 如果有人在某个 tasklet 中只做一件事 -- 触发自己
+ *
+ * 这个函数做什么?
+ *
+ * 1. 获得当前 CPU 软中断记录的位图
+ * 2. 清楚当前 CPU 软中断位图
+ * 3. 根据获得的位图逐个调用 softirq_vec 中定义的处理函数
+ * 4. 判断是否要处理在 3 执行过程中被触发的软中断, 判断的依据是:
+ *    i)   处理次数未超过限制, 通过变量 max_restart 判断
+ *    ii)  处理时间未超过限制, 通过变量 end 判断
+ *    iii) need_resched 不为真
+ *    上述 3 个条件必须全部满足才会继续执行处理, 否则会唤醒 ksoftirqd 之后退出
+ */
 asmlinkage __visible void __softirq_entry __do_softirq(void)
 {
 	unsigned long end = jiffies + MAX_SOFTIRQ_TIME;
@@ -321,6 +345,9 @@ restart:
 	current_restore_flags(old_flags, PF_MEMALLOC);
 }
 
+/*
+ * 这个函数最终会调用到 __do_softirq
+ */
 asmlinkage __visible void do_softirq(void)
 {
 	__u32 pending;
@@ -334,6 +361,11 @@ asmlinkage __visible void do_softirq(void)
 	pending = local_softirq_pending();
 
 	if (pending && !ksoftirqd_running(pending))
+		/*
+		 * 这个函数与体系架构相关
+		 * 如果体系架构支持软中断独立的栈, 则会先切换栈之后调用 __do_softirq
+		 * 如果没有, 则这个函数直接被替换为 __do_softirq
+		 */
 		do_softirq_own_stack();
 
 	local_irq_restore(flags);
