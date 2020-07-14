@@ -833,6 +833,38 @@ void set_task_stack_end_magic(struct task_struct *tsk)
 	*stackend = STACK_END_MAGIC;	/* for overflow detection */
 }
 
+/*
+ * 这个函数接受两个参数，orig 指向父进程的 task_struct
+ * node 指定内存分配节点(参考内存管理), 如果指定设为 NUMA_NO_NODE
+ * 代表不显式指定，则使用父进程的节点
+ *
+ * 该函数主要流程如下：
+ *
+ * 1. 从 slab 中分配一个 task_struct
+ * 2. 分配内核栈, 内核栈大小由宏 THREAD_SIZE 确定, 如果这个宏大于一个
+ *    page 则从 buddy 直接分配, 否则也从 skab 中分配内核栈
+ * 3. task_struct 对拷. 使用 arch_dup_task_struct, 每个体系结构可以自己
+ *    定义这个函数, 如果体系结构没有定义, 则使用默认的, 默认的处理很简单
+ *    就是把数据结构直接赋值. 这时候新诞生的进程与的 task_struct 与 源
+ *    进程的 task_struct 一模一样
+ * 4. 拷贝内核栈，该任务由 setup_thread_stack 完成，把父进程的内核栈拷贝给
+ *    新分配的内核栈
+ *
+ * 这个函数执行成功之后, 新进程已经有了自己的 task_struct 和内核栈
+ * 但仅仅这些还不够. 这里我们想一下, 描述一个进程还需要哪些要素
+ *
+ * 首先最重要的就是内存, 然后比如文件, 信号, 等等
+ * 是否为子进程分配这些资源的依据为调用 copy_process 传递的 clone_flags
+ *
+ * 除了这些资源之外, task_struct 中还记录了进程运行过程中的各种统计量
+ * 比如 上下文切换次数, 各种时间相关的统计量等等. 子进程的这些统计量也不
+ * 该和父进程相同, 因此在 copy_process 中会设置这些统计量
+ *
+ * 总的来说, 这个函数调用成功之后, 就从指定内存节点分配好了一个 task_struct
+ * 和与之对应的内核栈, 并且 task_struct 的 stack 指向分配好的内核栈
+ * 内核栈对应的 thread_info 的 task 域也指向分配出来的 task_struct
+ * 新分配的内核栈和 task_struct 与父进程的基本一致
+ */
 static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 {
 	struct task_struct *tsk;
