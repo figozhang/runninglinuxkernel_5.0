@@ -280,6 +280,38 @@ static void create_kthread(struct kthread_create_info *create)
 	}
 }
 
+/*
+ * 该函数不会直接创建线程, 而是把创建任务推给 kthreadd, 之后唤醒 kthreadd
+ *
+ * 1. 构建 create 数据结构
+ * 2. 把新创建的 create 添加到 kthread_create_list
+ * 3. 唤醒 kthreadd 内核线程, 创建新进程的任务由 kthreadd 完成, kthreadd
+ *    查询 kthread_create_list 链表, 根据链表中的 create 创建新内核线程
+ *    这么做的好处是所有内核线程的父进程都是 kthreadd
+ * 4. __kthread_create_on_node 与 kthreadd 之间的同步通过 create 结构中
+ *    的一个完成变量实现. __kthread_create_on_node 唤醒 kthreadd 之后就
+ *    会等待该完成变量.
+ *
+ * kthreadd 函数调用关系如下:
+ *
+ * kthreadd -> create_kthread -> kernel_thread
+ *
+ * 1. 如果 kernel_thread 创建失败, 则会 complete(done)
+ *    并把错误指针放在 create 中
+ *
+ * 2. 如果创建成功会在新创建的线程中 complete(done), 这样可以保证
+ *    新创建的线程在调用 __kthread_create_on_node 线程被唤醒之前执行
+ *    当 __kthread_create_on_node 被唤醒时, 新线程已经执行了 thread
+ *
+ *     __set_current_state(TASK_UNINTERRUPTIBLE);
+ *     create->result = current;
+ *     complete(done);
+ *     schedule();
+ *
+ *   在这之后 __kthread_create_on_node 才可能被唤醒, 这样保证了新创建的
+ *   内核线程的状态为 TASK_UNINTERRUPTIBLE, 需要显式调用 wake_up_process
+ *   唤醒
+ */
 static __printf(4, 0)
 struct task_struct *__kthread_create_on_node(int (*threadfn)(void *data),
 						    void *data, int node,
@@ -319,6 +351,12 @@ struct task_struct *__kthread_create_on_node(int (*threadfn)(void *data),
 		/*
 		 * kthreadd (or new kernel thread) will call complete()
 		 * shortly.
+		 *
+		 * 如果 kthreadd 中创建成功, 新创建的内核线程会执行 thread 函数
+		 * thread 函数会设置新创建内核线程状态为 TASK_UNINTERRUPTIBLE
+		 * 之后调用 complete.
+		 *
+		 * 如果 kthreadd 中创建失败, 会在 kthreadd 中调用 complete
 		 */
 		wait_for_completion(&done);
 	}
