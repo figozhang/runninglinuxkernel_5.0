@@ -915,9 +915,27 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	tsk->seccomp.filter = NULL;
 #endif
 
+	/*
+	 * 下面的函数调用主要用于初始化新分配的内核栈
+	 * 以及相应的 thread_info 结构
+	 */
+
+	/*
+	 * setup_thread_stack 主要完成下面两个任务
+	 * 把父进程的内核栈拷贝到新进程的内核栈
+	 * 设置新的内核栈的 task 指针指向新进程的 task_struct
+	 */
 	setup_thread_stack(tsk, orig);
 	clear_user_return_notifier(tsk);
+
+	/*
+	 * 清除新进程 NEED_RESCHED 标志
+	 */
 	clear_tsk_need_resched(tsk);
+
+	/*
+	 * 设置新进程内核栈的最后一个字, 用作栈溢出检测
+	 */
 	set_task_stack_end_magic(tsk);
 
 #ifdef CONFIG_STACKPROTECTOR
@@ -1702,6 +1720,39 @@ static inline void rcu_copy_process(struct task_struct *p)
  * It copies the registers, and all the appropriate
  * parts of the process environment (as per the clone
  * flags). The actual kick-off is left to the caller.
+ *
+ * 这个函数几乎涉及内核中所有的核心子系统, 比如调度, 内存管理, 文件系统等
+ *
+ * 关于内核中返回指针类型函数返回错误码的说明：
+ *
+ * 一般情况下如果函数执行成功返回有效指针，失败返回 NULL
+ * 但这种方式不能标志错误类型。内核中虚拟地址 0-4K 是未使用的无意义的区域，
+ * 内核使用这个地址范围来编码错误码。ERR_PTR 是一个辅助宏，用于把数值常数编码
+ * 为指针(如EINVAL, EAGAIN, ENODEV)。调用者通过 IS_ERR 检查函数返回的指针。
+ * 通过 PTR_ERR 把错误指针转换为错误常数。
+ *
+ * 1. 检查 clone_flags, 有些标志互斥, 如果同时设置会返回 EINVAL 的指针
+ * 2. 调用 dup_task_struct 分配 task_struct 和相应的内核栈，该函数会拷贝父进程的
+ *    task_struct 和内核栈到新分配的 task_struct 和内核栈
+ * 3. 检查用户进程数是否超出其限制，内核对每个用户的进程数有限制
+ * 4. 初始化 task_struct 的一些成员, 比如一些统计信息. 因为子进程的 task_struct 是
+ *    父进程 task_struct 的副本(dup_task_struct 中完成), 此时子进程 task_struct 的
+ *    大部分资源和父进程一直. 但一些统计信息, 状态信息不应继承父进程, 这些信息的设置
+ *    在检查完用户进程数的限制之后就会处理.
+ * 5. 调用 sched_fork 设置调度相关的成员, 这时子进程状态被标记为 TASK_NEW, 确保它不会
+ *    被调度.
+ * 6. 之后就是调用一系列 copy_xxx 来为子进程分配各种资源.
+ * 7. 分配完资源之后, 需要为子进程分配 pid, 处理进程之间的关系
+ * 8. copy_process 成功之后返回创建的 task_struct 的指针, 根据 clone_flags 新创建的
+ *    task_struct 与父进程共享某些资源.
+ *
+ * 至此, 新分配并初始化了一个 task_struct, 按照 clone_flags 为该 task_struct 分配
+ * 了资源, 该 task_struct 还不可以被调度, 只有被加到 runqueue 才可能被调度.
+ *
+ * 内核定义了通用函数把任务加入或移出 runqueue
+ * task_struct 加入 runqueue 使用 activate_task 在涉及到唤醒进程时会调用这个函数
+ * task_struct 移出 runqueue 使用 deactivate_task 在涉及到休眠时会调用这个函数
+ * __schedule 也会调用这个函数
  */
 static __latent_entropy struct task_struct *copy_process(
 					unsigned long clone_flags,
@@ -1807,6 +1858,15 @@ static __latent_entropy struct task_struct *copy_process(
 	DEBUG_LOCKS_WARN_ON(!p->softirqs_enabled);
 #endif
 	retval = -EAGAIN;
+
+	/*
+	 * 检查进程所属的用户的进程数是否超过限制
+	 *
+	 * user 记录了拥有当前进程用户的资源, 其中包括该用户所拥有的进程
+	 *
+	 * 资源限制使用 struct rlimit 描述
+	 * 每个任务有一个 struct rlimit 数组, 每个数组项对应一种资源限制
+	 */
 	if (atomic_read(&p->real_cred->user->processes) >=
 			task_rlimit(p, RLIMIT_NPROC)) {
 		if (p->real_cred->user != INIT_USER &&
@@ -1815,6 +1875,12 @@ static __latent_entropy struct task_struct *copy_process(
 	}
 	current->flags &= ~PF_NPROC_EXCEEDED;
 
+	/*
+	 * 即使为新进程分配了 cred, 但新进程和老进程共享一个 user 结构
+	 * 也就是他们的 real_cred->user 指向同一个实例
+	 *
+	 * copy_creds 会把 user->process 加 1
+	 */
 	retval = copy_creds(p, clone_flags);
 	if (retval < 0)
 		goto bad_fork_free;
@@ -1828,6 +1894,12 @@ static __latent_entropy struct task_struct *copy_process(
 	if (nr_threads >= max_threads)
 		goto bad_fork_cleanup_count;
 
+	/*
+	 * 初始化 task_struct
+	 *
+	 * 到目前为止新的 task_struct 由 dup_task_struct 产生, 新的 task_struct
+	 * 的多数成员继承自老的, 下面对新 task_struct 的一些成员进行初始化
+	 */
 	delayacct_tsk_init(p);	/* Must remain after dup_task_struct() */
 	p->flags &= ~(PF_SUPERPRIV | PF_WQ_WORKER | PF_IDLE);
 	p->flags |= PF_FORKNOEXEC;
@@ -1916,10 +1988,18 @@ static __latent_entropy struct task_struct *copy_process(
 #endif
 
 	/* Perform scheduler related setup. Assign this task to a CPU. */
+	/*
+	 * 这个函数会把进程的 preempt_count 设置为 FORK_PREEMPT_COUNT
+	 *
+	 * ret_from_fork 会调用 schedule_tail -> finish_task_switch
+	 *
+	 * 在 finish_task_switch 中会对进程得 preempt_count 重新设置
+	 *
+	 * 另外会设置进程状态为 TASK_NEW, 这样该进程在被显示唤醒之前不会被调度
+	 */
 	retval = sched_fork(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_policy;
-
 	retval = perf_event_init_task(p);
 	if (retval)
 		goto bad_fork_cleanup_policy;
@@ -1931,6 +2011,21 @@ static __latent_entropy struct task_struct *copy_process(
 	retval = security_task_alloc(p, clone_flags);
 	if (retval)
 		goto bad_fork_cleanup_audit;
+
+	/*
+	 * 接下来的代码是 copy_process 的重要部分 -- 给新任务分配资源
+	 *
+	 * task_struct 中会有很多指针, 指向该进程得各种资源, 例如文件系统资源,
+	 * 内存资源等等. 新诞生的 task_struct 的这些指针都指向父进程的资源.
+	 * 下面的一系列函数根据 clone_flags 为新诞生的 task_struct 各种资源
+	 *
+	 * 这些函数的形式是 copy_xxx(clone_flags, p);
+	 *
+	 * 例如有资源 res_xxx, 如果 clone_flags 中设置了 CLONE_XXX 则子进程会
+	 * 共享父进程的 res_xxx, 同时把 res_xxx 的引用计数加 1. 如果没有设置
+	 * CLONE_XXX 则会为子进程分配并设置新的资源 res_xxx 同时把新资源的引
+	 * 用计数设置为 1, 把子进程对应该资源的指针指向新分配的资源.
+	 */
 	retval = copy_semundo(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_security;
@@ -1955,12 +2050,43 @@ static __latent_entropy struct task_struct *copy_process(
 	retval = copy_io(clone_flags, p);
 	if (retval)
 		goto bad_fork_cleanup_namespaces;
+
+	/*
+	 * 要理解上述 copy_xxx 需要理解相应的子系统
+	 *
+	 * copy_thread_tls 与上述所有其他复制操作都大不相同, 这是一个特定
+	 * 于体系结构的函数, 用于复制进程中特定于线程(thread-specific)的数据
+	 *
+	 * 在 task_struct 中有这样一个成员 struct thread_struct thread,
+	 * 该成员保存任务中与 CPU 相关的部分
+	 *
+	 * CPU-specific state of this task: struct thread_struct thread;
+	 *
+	 * 除了 thread_struct 之外, 内核还定义了 struct pt_regs 也是体系结构
+	 * 相关的结构, 该结构保存了 CPU 的所有寄存器.
+	 *
+	 * 进程上下文切换时会把切出进程的 CPU 寄存器保存在 thread_struct
+	 * 并加载换入进程保存在 thread_struct 中的 CPU 寄存器
+	 *
+	 * 进程因为系统调用, 中断或者其他异常从用户态切换到内核态时会把 CPU
+	 * 寄存器保存在 pt_regs
+	 *
+	 * 这个函数会设置 CPU 寄存器. 下次调用 __switch_to 时, 加载这次设置
+	 * 的这些寄存器. copy_thread_tls 设置寄存器让下一次 __switch_to
+	 * 到子进程时从 ret_from_fork 开始执行(汇编函数)
+	 *
+	 * copy_thread_tls 针对内核线程和用户进程设置 CPU 的方式不同
+	 * 这样 ret_from_fork 可以分辨出内核线程并作出不同处理
+	 */
 	retval = copy_thread_tls(clone_flags, stack_start, stack_size, p, tls);
 	if (retval)
 		goto bad_fork_cleanup_io;
 
 	stackleak_task_init(p);
 
+	/*
+	 * 分配 PID
+	 */
 	if (pid != &init_struct_pid) {
 		pid = alloc_pid(p->nsproxy->pid_ns_for_children);
 		if (IS_ERR(pid)) {
@@ -2224,6 +2350,10 @@ struct task_struct *fork_idle(int cpu)
  *
  * It copies the process, and if successful kick-starts
  * it and waits for it to finish using the VM if required.
+ *
+ * _do_fork 调用 copy_process 创建新任务
+ *
+ * do_fork 要返回进程 pid, 因此必须获得 pid
  */
 long _do_fork(unsigned long clone_flags,
 	      unsigned long stack_start,
