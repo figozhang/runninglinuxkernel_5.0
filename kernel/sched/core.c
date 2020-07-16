@@ -2136,6 +2136,14 @@ out:
  * Return: 1 if the process was woken up, 0 if it was already running.
  *
  * This function executes a full memory barrier before accessing the task state.
+ *
+ * The path of task added in runqueue
+ * try_to_wake_up
+ * 	-> ttwu_queue
+ * 		-> ttwu_do_activate
+ * 			-> ttwu_activate
+ * 				-> activate_task
+ * 					->enqueue_task
  */
 int wake_up_process(struct task_struct *p)
 {
