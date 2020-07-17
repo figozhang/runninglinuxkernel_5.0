@@ -3392,6 +3392,13 @@ again:
  *           preempt_enable(). (this might be as soon as the wake_up()'s
  *           spin_unlock()!)
  *
+ *           how preempt_enable cause this function called:
+ * 		preempt_enable ->
+ * 			__preempt_schedule
+ * 				-> preempt_schedule
+ * 					-> preempt_schedule_common
+ * 						-> __schedule(true)
+ *
  *         - in IRQ context, return from interrupt-handler to
  *           preemptible context
  *
@@ -3441,6 +3448,22 @@ static void __sched notrace __schedule(bool preempt)
 	update_rq_clock(rq);
 
 	switch_count = &prev->nivcsw;
+
+	/*
+	 * 如果进程不是被抢占的并且进程状态不是 TASK_RUNNING
+	 *
+	 * 判断如果进程有等待信号, 修改进程状态为 TASK_RUNNING
+	 * 让进程有机会得到调度去处理信号
+	 * 否则把进程从 runqueue 中删除(dequeue_task)
+	 *
+	 * 所以我们看到一些睡眠处理基本上就是类似:
+	 * 	set_current_state(TASK_UNINTERRUPTIBLE)
+	 * 	schedule();
+	 * 并没有看到显式的把任务从 runqueue 中删除
+	 *
+	 * 如果进程是被抢占的, 则调用这个函数时会把 preempt 设为 true
+	 * 这样即使当前进程被调度出去, 但仍然在 runqueue, 仍有机会被调度
+	 */
 	if (!preempt && prev->state) {
 		if (signal_pending_state(prev->state, prev)) {
 			prev->state = TASK_RUNNING;
@@ -3469,10 +3492,20 @@ static void __sched notrace __schedule(bool preempt)
 		switch_count = &prev->nvcsw;
 	}
 
+	/*
+	 * 遍历 runqueue 得到该换入的进程
+	 */
 	next = pick_next_task(rq, prev, &rf);
+
+	/*
+	 * 清除换出进程的 need_resched 标识
+	 */
 	clear_tsk_need_resched(prev);
 	clear_preempt_need_resched();
 
+	/*
+	 * 如果 prev 和 next 不同, 执行上下文切换
+	 */
 	if (likely(prev != next)) {
 		rq->nr_switches++;
 		rq->curr = next;
