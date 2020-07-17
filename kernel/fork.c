@@ -582,6 +582,12 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 		rb_parent = &tmp->vm_rb;
 
 		mm->map_count++;
+
+		/*
+		 * 复制父进程页表
+		 *
+		 * pgd -> p4d -> pud -> pmd -> pte 一级级调用
+		 */
 		if (!(tmp->vm_flags & VM_WIPEONFORK))
 			retval = copy_page_range(mm, oldmm, mpnt);
 
@@ -592,6 +598,11 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 			goto out;
 	}
 	/* a new mm has just been created */
+
+	/*
+	 * 体系结构相关的回调函数, arm 和 arm64 未定义
+	 * 使用 mm_hook.h 中定义的默认函数, 直接返回 0
+	 */
 	retval = arch_dup_mmap(oldmm, mm);
 out:
 	up_write(&mm->mmap_sem);
@@ -1358,15 +1369,37 @@ static struct mm_struct *dup_mm(struct task_struct *tsk)
 	struct mm_struct *mm, *oldmm = current->mm;
 	int err;
 
+	/*
+	 * 从 slab 中分配 mm_struct
+	 */
 	mm = allocate_mm();
 	if (!mm)
 		goto fail_nomem;
 
+	/*
+	 * 拷贝父进程 mm_struct 给新分配的 mm_struct
+	 *
+	 * 需要注意的是这时候只是拷贝 mm_struct 并没有
+	 * 拷贝父进程的内存资源
+	 */
 	memcpy(mm, oldmm, sizeof(*mm));
 
+	/*
+	 * 初始化 mm_struct 的成员
+	 * 为 mm_struct 分配 pgd, 分配 pgd 会调用 pgd_alloc
+	 * 这是个体系架构相关的函数
+	 *
+	 * arm64 的 pgd_alloc 只是分配一段内存
+	 * arm 的 pgd_alloc 除了分配内存之外还会复制内核页表中
+	 * 3-4G 部分页表, 并对分配的 pgd 做其他设置
+	 * 两种体系架构的不同实现是由体系的特性决定的
+	 */
 	if (!mm_init(mm, tsk, mm->user_ns))
 		goto fail_nomem;
 
+	/*
+	 * dup_mmap 复制父进程 vma 和用户空间的页表
+	 */
 	err = dup_mmap(mm, oldmm);
 	if (err)
 		goto free_pt;
