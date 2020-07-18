@@ -460,6 +460,27 @@ void free_task(struct task_struct *tsk)
 EXPORT_SYMBOL(free_task);
 
 #ifdef CONFIG_MMU
+/*
+ * 这个函数复制父进程 vma 和页表到子进程
+ * 主要做了下面的处理:
+ *
+ * 1. 子进程中内存描述符中成员的初始化
+ * 2. 遍历父进程 vma, 针对父进程的每个 vma 为子进程分配 vma 并复制
+ *    父进程的 vma, 除此之外还会复制父进程每个 vma 对应的页表
+ *    复制页表调用的函数是 copy_page_range, 这个函数最终会调用
+ *    copy_one_pte, 在这个函数中会根据父进程 vma 的 vm_flags 判断
+ *    这段 vma 是否是 cow 的, 如果是会修改父进程相应的页表为只读属性
+ *    ptep_set_wrprotect(src_mm, addr, src_pte);
+ *    之后会设置子进程的页表
+ *
+ * 这个函数执行成功, 子进程拥有了自己的 vma, 这些 vma 对应的
+ * 虚拟地址被映射到和父进程同样的物理页面. 这样子进程用户空间看到的
+ * 内存的内容和符进程一样.
+ * 对于有写属性的内存区域, copy_one_pte 会
+ * 修改页表, 让这些页面不可写, 但是 vma 中的 vm_flags 仍标记了写属性
+ * 这样父子进程中的任何一个去写, 都会触发 page fault, 在 page fault
+ * 判断 vm_flags 然后做相应处理. 这就是写时复制技术.
+ */
 static __latent_entropy int dup_mmap(struct mm_struct *mm,
 					struct mm_struct *oldmm)
 {
@@ -500,9 +521,18 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 		goto out;
 
 	prev = NULL;
+
+	/*
+	 * 遍历父进程的每个 vma
+	 *
+	 * mm_struct->mmap 是 vm_area_struct 链表
+	 */
 	for (mpnt = oldmm->mmap; mpnt; mpnt = mpnt->vm_next) {
 		struct file *file;
 
+		/*
+		 * 如果 vma 标记了 VM_DONTCOPY 则这里不会复制
+		 */
 		if (mpnt->vm_flags & VM_DONTCOPY) {
 			vm_stat_account(mm, mpnt->vm_flags, -vma_pages(mpnt));
 			continue;
@@ -523,12 +553,24 @@ static __latent_entropy int dup_mmap(struct mm_struct *mm,
 				goto fail_nomem;
 			charge = len;
 		}
+
+		/*
+		 * 从 slab 中分配一个 vma 并把父进程的 vma 复制给它
+		 */
 		tmp = vm_area_dup(mpnt);
 		if (!tmp)
 			goto fail_nomem;
+
+		/*
+		 * 复制父进程的 mem_policy, mem_policy 结构实例从 slab 中分配
+		 */
 		retval = vma_dup_policy(mpnt, tmp);
 		if (retval)
 			goto fail_nomem_policy;
+
+		/*
+		 * 着手区分父子进程的 vma
+		 */
 		tmp->vm_mm = mm;
 		retval = dup_userfaultfd(tmp, &uf);
 		if (retval)
