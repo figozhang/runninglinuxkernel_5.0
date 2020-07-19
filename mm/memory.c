@@ -705,6 +705,10 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	struct page *page;
 
 	/* pte contains position in swap or file, so copy. */
+
+	/*
+	 * 要复制的源 pte 不在内存
+	 */
 	if (unlikely(!pte_present(pte))) {
 		swp_entry_t entry = pte_to_swp_entry(pte);
 
@@ -966,6 +970,56 @@ static inline int copy_p4d_range(struct mm_struct *dst_mm, struct mm_struct *src
 	return 0;
 }
 
+/*
+ * 这个函数主要是把进程描述符 src_mm 的由 vma 指定的虚拟地址空间的
+ * 页表复制给 dst_mm, 这样 dst_mm 的这段虚拟地址空间和 src_mm 指向
+ * 同样的物理页面.
+ *
+ * 需要注意的是这里只是复制页表, 并没有复制内存中的数据. 实际上
+ * src_mm 和 dst_mm 会共享物理内存.
+ *
+ * 一般 src_mm 是父进程的内存描述符, dst_mm 是子进程的内存描述符
+ *
+ * 调用之前, src_mm 的这段 vma 指向某一段物理页面. 这时候
+ * dst_mm 对应的这段 vma 没有映射到具体的物理页面(对应的页表无效或
+ * 页表内容为脏)或映射到其他物理页面, 调用成功之后 dst_mm 的这段
+ * vma 指向 src_mm 同样的物理页面, 如下所示
+ *
+ * ------------------- Virtual ----------------------------------
+ *
+ *        src_mm                        dst_mm
+ *  4G +--------+                     +--------+
+ *     |        |                     |        |
+ *  3G +--------+                     +--------+
+ *     |        |                     |        |
+ *     |        |                     |        |
+ *     +--------+                     +--------+
+ *     | vma    | --+              +--|   vma  |
+ *     +--------+   |              |  +--------+
+ *     |        |   |              |  |        |
+ *  0  +--------+   |              |  +--------+
+ *                  |              |
+ * -----------------+-- Physical --+-----------------------------
+ *                  |              |
+ *                  |  +--------+  |
+ *                  +->|        |<-+
+ *                     +--------+
+ *
+ * 要理解这个函数需要理解内核的页表管理. linux 5.0 的页表管理结构为
+ * 五级页表, 分别为 pgd, p4d, pud, pmd 和 pte. 在调用这个函数之前, 应该
+ * 已经分配好了 pgd, 这个函数会设置 dst_mm 页表中 vma 指定的起始地址到
+ * 结束地址之间的页表, 让它们指向 src_mm 相同的物理页面.
+ *
+ * 五级页表的复制是一级级进行下去的
+ * 	copy_page_range
+ * 		-> copy_p4d_range
+ * 			-> copy_pud_range
+ * 				-> copy_pmd_range
+ * 					-> copy_pte_range
+ * 						-> copy_one_pte
+ *
+ * 每一级都涉及到内存分配和复制, 因此复制页表其实是一个开销挺大的过程
+ */
 int copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 		struct vm_area_struct *vma)
 {
