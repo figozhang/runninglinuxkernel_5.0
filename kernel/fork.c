@@ -2429,6 +2429,10 @@ struct task_struct *fork_idle(int cpu)
  * _do_fork 调用 copy_process 创建新任务
  *
  * do_fork 要返回进程 pid, 因此必须获得 pid
+ *
+ * 需要注意的是如果创建的是内核线程
+ * 参数 stack_start 对应的是内核线程要执行的函数地址
+ * 参数 stack_size 对应的是该函数的参数
  */
 long _do_fork(unsigned long clone_flags,
 	      unsigned long stack_start,
