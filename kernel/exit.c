@@ -770,6 +770,19 @@ static void check_stack_usage(void)
 static inline void check_stack_usage(void) {}
 #endif
 
+/*
+ * 这个函数可以理解为 copy_process 的对立面
+ *
+ * copy_process 中为进程分配的资源, 这里要一一释放
+ *
+ * 释放不一定会直接把资源释放, 一般情况下资源都有一个引用计数,
+ * 每有一个任务引用这个资源就会把引用技术加 1. 所谓的释放, 实际
+ * 会先把引用计数减 1, 判断减 1 之后的引用计数, 如果判断没有
+ * 其他任务使用这个资源, 才会真正调用释放函数
+ *
+ * 这个函数执行之后, 调用的进程只剩下一具躯壳, 父进程通过 wait
+ * 得到它死的原因, 并清理任务的 task_struct
+ */
 void __noreturn do_exit(long code)
 {
 	struct task_struct *tsk = current;
@@ -818,6 +831,9 @@ void __noreturn do_exit(long code)
 		schedule();
 	}
 
+	/*
+	 * 信号处理
+	 */
 	exit_signals(tsk);  /* sets PF_EXITING */
 	/*
 	 * Ensure that all new tsk->pi_lock acquisitions must observe
@@ -841,6 +857,7 @@ void __noreturn do_exit(long code)
 	/* sync mm's RSS info before statistics gathering */
 	if (tsk->mm)
 		sync_mm_rss(tsk->mm);
+
 	acct_update_integrals(tsk);
 	group_dead = atomic_dec_and_test(&tsk->signal->live);
 	if (group_dead) {
@@ -856,9 +873,23 @@ void __noreturn do_exit(long code)
 		tty_audit_exit();
 	audit_free(tsk);
 
+	/*
+	 * 任务退出代码
+	 */
 	tsk->exit_code = code;
 	taskstats_exit(tsk, group_dead);
 
+	/*
+	 * 这个很重要, 可能会释放进程对应的用户空间的内存描述符
+	 *
+	 * exit_mm
+	 * 	-> mm_put
+	 * 	 	-> __mmput
+	 * 	 		-> mmdrop
+	 * 	 			-> __mmdrop
+	 * 	 				-> free_mm
+	 * 	 					-> kmem_cache_free
+	 */
 	exit_mm();
 
 	if (group_dead)
@@ -873,6 +904,11 @@ void __noreturn do_exit(long code)
 		disassociate_ctty(1);
 	exit_task_namespaces(tsk);
 	exit_task_work(tsk);
+
+	/*
+	 * 体系结构相关的代码, 并不是每个体系都有实现
+	 * 如果没有实现则使用默认的空函数
+	 */
 	exit_thread(tsk);
 	exit_umh(tsk);
 
@@ -930,6 +966,10 @@ void __noreturn do_exit(long code)
 	exit_tasks_rcu_finish();
 
 	lockdep_free_task(tsk);
+
+	/*
+	 * 执行到这儿的时候进程的资源已经释放, 这时候需要调度出去
+	 */
 	do_task_dead();
 }
 EXPORT_SYMBOL_GPL(do_exit);

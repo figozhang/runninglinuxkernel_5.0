@@ -3545,7 +3545,16 @@ void __noreturn do_task_dead(void)
 	/* Tell freezer to ignore us: */
 	current->flags |= PF_NOFREEZE;
 
+	/*
+	 * 执行完这个函数之后, 这个进程再也没有机会运行
+	 * 这时候进程只剩下一个躯壳, 并留下了自己的遗言, 告诉父亲自己的死因
+	 * 只等到父进程的 wait 清理它的 task_struct
+	 */
 	__schedule(false);
+
+	/*
+	 * 进程已经死了, 不应该再被调度. 所以如果执行到这个位置, 就说明是个 BUG
+	 */
 	BUG();
 
 	/* Avoid "noreturn function does return" - but don't continue if BUG() is a NOP: */
