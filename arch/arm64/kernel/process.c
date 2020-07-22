@@ -332,6 +332,11 @@ int copy_thread(unsigned long clone_flags, unsigned long stack_start,
 
 	if (likely(!(p->flags & PF_KTHREAD))) {
 		*childregs = *current_pt_regs();
+
+		/*
+		 * regs[0] 是返回到用户空间的返回值
+		 * 这样子进程返回到用户空间时, fork 的返回值就是 0
+		 */
 		childregs->regs[0] = 0;
 
 		/*
@@ -363,6 +368,10 @@ int copy_thread(unsigned long clone_flags, unsigned long stack_start,
 		if (arm64_get_ssbd_state() == ARM64_SSBD_FORCE_DISABLE)
 			childregs->pstate |= PSR_SSBS_BIT;
 
+		/*
+		 * 在调用 fork 创建内核线程时, copy_process 的参数 stack_start
+		 * 就是内核线程函数的地址, stk_sz 就是内核函数的参数
+		 */
 		p->thread.cpu_context.x19 = stack_start;
 		p->thread.cpu_context.x20 = stk_sz;
 	}

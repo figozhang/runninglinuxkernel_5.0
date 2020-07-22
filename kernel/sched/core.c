@@ -2136,6 +2136,14 @@ out:
  * Return: 1 if the process was woken up, 0 if it was already running.
  *
  * This function executes a full memory barrier before accessing the task state.
+ *
+ * The path of task added in runqueue
+ * try_to_wake_up
+ * 	-> ttwu_queue
+ * 		-> ttwu_do_activate
+ * 			-> ttwu_activate
+ * 				-> activate_task
+ * 					->enqueue_task
  */
 int wake_up_process(struct task_struct *p)
 {
@@ -3384,6 +3392,13 @@ again:
  *           preempt_enable(). (this might be as soon as the wake_up()'s
  *           spin_unlock()!)
  *
+ *           how preempt_enable cause this function called:
+ * 		preempt_enable ->
+ * 			__preempt_schedule
+ * 				-> preempt_schedule
+ * 					-> preempt_schedule_common
+ * 						-> __schedule(true)
+ *
  *         - in IRQ context, return from interrupt-handler to
  *           preemptible context
  *
@@ -3433,6 +3448,22 @@ static void __sched notrace __schedule(bool preempt)
 	update_rq_clock(rq);
 
 	switch_count = &prev->nivcsw;
+
+	/*
+	 * 如果进程不是被抢占的并且进程状态不是 TASK_RUNNING
+	 *
+	 * 判断如果进程有等待信号, 修改进程状态为 TASK_RUNNING
+	 * 让进程有机会得到调度去处理信号
+	 * 否则把进程从 runqueue 中删除(dequeue_task)
+	 *
+	 * 所以我们看到一些睡眠处理基本上就是类似:
+	 * 	set_current_state(TASK_UNINTERRUPTIBLE)
+	 * 	schedule();
+	 * 并没有看到显式的把任务从 runqueue 中删除
+	 *
+	 * 如果进程是被抢占的, 则调用这个函数时会把 preempt 设为 true
+	 * 这样即使当前进程被调度出去, 但仍然在 runqueue, 仍有机会被调度
+	 */
 	if (!preempt && prev->state) {
 		if (signal_pending_state(prev->state, prev)) {
 			prev->state = TASK_RUNNING;
@@ -3461,10 +3492,20 @@ static void __sched notrace __schedule(bool preempt)
 		switch_count = &prev->nvcsw;
 	}
 
+	/*
+	 * 遍历 runqueue 得到该换入的进程
+	 */
 	next = pick_next_task(rq, prev, &rf);
+
+	/*
+	 * 清除换出进程的 need_resched 标识
+	 */
 	clear_tsk_need_resched(prev);
 	clear_preempt_need_resched();
 
+	/*
+	 * 如果 prev 和 next 不同, 执行上下文切换
+	 */
 	if (likely(prev != next)) {
 		rq->nr_switches++;
 		rq->curr = next;
@@ -3504,7 +3545,16 @@ void __noreturn do_task_dead(void)
 	/* Tell freezer to ignore us: */
 	current->flags |= PF_NOFREEZE;
 
+	/*
+	 * 执行完这个函数之后, 这个进程再也没有机会运行
+	 * 这时候进程只剩下一个躯壳, 并留下了自己的遗言, 告诉父亲自己的死因
+	 * 只等到父进程的 wait 清理它的 task_struct
+	 */
 	__schedule(false);
+
+	/*
+	 * 进程已经死了, 不应该再被调度. 所以如果执行到这个位置, 就说明是个 BUG
+	 */
 	BUG();
 
 	/* Avoid "noreturn function does return" - but don't continue if BUG() is a NOP: */
