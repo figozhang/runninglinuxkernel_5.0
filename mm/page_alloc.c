@@ -111,6 +111,13 @@ EXPORT_SYMBOL(latent_entropy);
 
 /*
  * Array of node states.
+ *
+ * for_each_node_state 实际是判断这个数组的某个成员, 例如
+ * for_each_online_node 就会遍历 node_states[N_ONLINE] 来遍历每个节点
+ *
+ * 这个数组在 setup_arch 中初始化
+ * 对于 arm64, setup_arch -> bootmem_init -> arm64_numa_init 会初始化这个数组
+ * 的 N_ONLINE.
  */
 nodemask_t node_states[NR_NODE_STATES] __read_mostly = {
 	[N_POSSIBLE] = NODE_MASK_ALL,
@@ -7155,8 +7162,21 @@ void __init free_area_init_nodes(unsigned long *max_zone_pfn)
 	mminit_verify_pageflags_layout();
 	setup_nr_node_ids();
 	zero_resv_unavail();
+
+	/*
+	 * 这个宏很复杂, 实现的功能就是遍历每个内存节点, 可以使用 NODE_DATA 宏把
+	 * 节点索引得到该节点对应的 pgdata
+	 *
+	 * NODE_DATA 这个宏的定义也很有意思, 首先在 include/linux/mmzone.h 中定义
+	 * 如果没有定义 NEED_MULTIPLE, 则直接返回 contig_page_data 的地址
+	 * 如果定义了 NEED_MULTIPLE 则定义在体系相关的头文件中 arch/xxx/include/asm/mmzone.h
+	 */
 	for_each_online_node(nid) {
 		pg_data_t *pgdat = NODE_DATA(nid);
+
+		/*
+		 * buddy 的核心初始化函数
+		 */
 		free_area_init_node(nid, NULL,
 				find_min_pfn_for_node(nid), NULL);
 

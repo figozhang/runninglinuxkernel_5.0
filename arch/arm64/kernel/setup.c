@@ -281,6 +281,14 @@ u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 
 void __init setup_arch(char **cmdline_p)
 {
+	/*
+	 * init_mm 的是 init_task 的内存描述符
+	 *
+	 * init_mm 和 init_task 都是静态创建的
+	 *
+	 * 系统中所有的 mm_struct 会放到以 init_mm 为链表头的链表中
+	 * 所有的 task_stack 会放到以 init_task 为链表头的链表中
+	 */
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code   = (unsigned long) _etext;
 	init_mm.end_data   = (unsigned long) _edata;
@@ -310,8 +318,27 @@ void __init setup_arch(char **cmdline_p)
 
 	xen_early_init();
 	efi_init();
+
+	/*
+	 * 初始化 memblock, 之后可以通过 memblock 子系统申请内存
+	 *
+	 * 关于 memblock 可以参考 mm/memblock.c 文件头的注释
+	 *
+	 * 基本上思路就是在 buddy 还没起来的时候使用 memblock 管理系统内存
+	 * buddy 初始化好了之后, mem_init 函数会把 memblock 管理的内存全部释放给
+	 * buddy, 调用的函数是 memblock_free_all
+	 *
+	 * 在这个函数和 mem_init 之间, 内存的分配和释放都使用 memblock
+	 *
+	 * memblock_alloc 从 memblock 分配内存
+	 * memblock_alloc_node 指定分配内存节点, 从 memblock 分配内存
+	 * memblock_free 释放内存给 memblock
+	 */
 	arm64_memblock_init();
 
+	/*
+	 * 页表初始化, 建立内核空间虚拟地址与物理地址之间的映射
+	 */
 	paging_init();
 
 	acpi_table_upgrade();
@@ -322,6 +349,12 @@ void __init setup_arch(char **cmdline_p)
 	if (acpi_disabled)
 		unflatten_device_tree();
 
+	/*
+	 * 这个函数在每个体系结构的 setup_arch 被调用, 并不是所有的体系结构都实现了这个函数
+	 *
+	 * bootmem_init 不是初始化启动期间的内存, 每个体系结构在这个函数中做的处理也可能不一样.
+	 * 对于 arm64 而言, 这个函数会初始化 buddy 分配器相关的数据结构, 包括内存节点和内存域.
+	 */
 	bootmem_init();
 
 	kasan_init();
