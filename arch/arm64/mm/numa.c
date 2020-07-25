@@ -369,11 +369,26 @@ static int __init numa_register_nodes(void)
 		}
 
 	/* Finally register nodes. */
+	/*
+	 * 这个宏借助于编译期间定义的常量宏 MAX_NUMNODES 实现
+	 */
 	for_each_node_mask(nid, numa_nodes_parsed) {
 		unsigned long start_pfn, end_pfn;
 
 		get_pfn_range_for_nid(nid, &start_pfn, &end_pfn);
+
+		/*
+		 * 从 memblock 申请 pglist_data 结构, 填充 node_data 数组
+		 */
 		setup_node_data(nid, start_pfn, end_pfn);
+
+		/*
+		 * 在 page_alloc.c 中定义了一个 nodemask_t 类型数组变量 node_states
+		 *
+		 * 其中的每个数组成员对应一种内存节点类型
+		 *
+		 * 这个函数会把 N_ONLINE 的 nid 位设置, 这样就认为对应的 node 是存在的
+		 */
 		node_set_online(nid);
 	}
 

@@ -534,6 +534,37 @@ void __init __weak arch_call_rest_init(void)
 	rest_init();
 }
 
+/*
+ * 内核 C 函数起始的地方. 汇编代码设置好必要的栈, CPU 模式等初始化之后跳转到这个函数执行
+ * 对于 arm 和 arm64, 跳转到这个函数之前已经使能了 MMU 并设置了部分页表
+ *
+ * linux 使用 buddy 内存分配器, 系统启动到 buddy 初始化完成需要一个内存分配器, 这个内存分
+ * 配器称为自举分配器. 在 buddy 分配器初始化完成之后, linux 会把自举分配器管理的物理内存
+ * 释放给 buddy. 前 linux 使用的自举分配器称为 bootmem, 现在使用的是 memblock, memblock
+ * 使用的内存被放在特殊的段, 之后会被释放.
+ *
+ * 现在 bootmem 已从内核删除, 详见下面的 commit
+ *
+ * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=355c45affca7114ab510e296a5b7012943aeea17
+ *
+ * 内存管理相关初始化涉及下面方面:
+ *
+ * 	1. 探测系统中可用内存. 这是体系结构相关的处理. 现在 linux 基本使用设备树描述
+ * 	   内存信息, 这个任务会在 setup_arch 完成, 具体怎么实现与每个体系结构有关.
+ * 	   检测到可用内存会把检测到的内存加到自举分配器
+ *	2. buddy 相关数据结构的初始化(这部分很复杂, 涉及很多细节部分)
+ *	3. 设置内核页表 swapper_pg_dir, 设置内核固定映射部分的页表
+ *	4. 释放自举分配器管理的内存给 buddy 分配器
+ *
+ * 一些函数说明:
+ * 	setup_arch, 体系结构相关, 定义在 arch/xxx/kernel/setup.c
+ * 		    扫描每个内存节点的内存信息, 把这些内存加到自举分配器中
+ *		    设置内核页表
+ *
+ * 	mem_init, 体系结构相关, 定义在 arch/xxx/mm/init.c
+ * 		  释放自举分配器管理的内存给 buddy, 调用这个函数之前, buddy
+ * 		  分配器的相关数据结构已经初始化好了.
+ */
 asmlinkage __visible void __init start_kernel(void)
 {
 	char *command_line;
@@ -556,6 +587,7 @@ asmlinkage __visible void __init start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
+
 	/*
 	 * Set up the the initial canary and entropy after arch
 	 * and after adding latent and command line entropy.
@@ -593,6 +625,15 @@ asmlinkage __visible void __init start_kernel(void)
 	vfs_caches_init_early();
 	sort_main_extable();
 	trap_init();
+
+	/*
+	 * 目前为止, 内存分配器使用的都是 memblock
+	 *
+	 * mm_init 调用 mem_init, mem_init 把启动期间内存分配器中
+	 * 未使用的页面释放给 buddy. 在这之前, buddy 就是一个空水池
+	 *
+	 * 这个函数执行之后, 系统的内存分配器由 memblock 变为 buddy
+	 */
 	mm_init();
 
 	ftrace_init();

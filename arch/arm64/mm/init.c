@@ -484,7 +484,16 @@ void __init bootmem_init(void)
 
 	max_pfn = max_low_pfn = max;
 
+	/*
+	 * numa 相关初始化. 主要会扫描并注册内存节点
+	 *
+	 * mm/page_alloc.c 中定义了一个 node_mask 的数组 node_state 记录系统中节点的状态. 
+	 *
+	 * 这个函数最终会根据系统中内存节点的个数, 分配并初始化内存节点, 之后设置 node_state
+	 * 的相关域.
+	 */
 	arm64_numa_init();
+
 	/*
 	 * Sparsemem tries to allocate bootmem in memory_present(), so must be
 	 * done after the fixed reservations.
@@ -492,8 +501,15 @@ void __init bootmem_init(void)
 	arm64_memory_present();
 
 	sparse_init();
+
+	/*
+	 * 初始化 buddy 内存域
+	 */
 	zone_sizes_init(min, max);
 
+	/*
+	 * memblock_dump 实际就是通过 printk 把每个 memblock 的 region 打印出来
+	 */
 	memblock_dump_all();
 }
 
