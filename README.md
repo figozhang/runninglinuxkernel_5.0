@@ -1,5 +1,10 @@
 # 《奔跑吧Linux内核》 第二版配套实验平台
 
+## 《奔跑吧Linux内核》的来由
+笨叔当fae的时候，去请教研发兄弟一些问题，时常会遭到白眼：我也不太懂，某某代码里有，你自己看啦，某某芯片手册有，你自己看啦。
+现在人生活压力忒大，生怕教会了别人，感觉明天就会失业了一样。笨叔觉得，好东西需要记录下来和大家分享，于是有了《奔跑吧linux内核》。
+
+## 实验平台说明
 本git repo是《奔跑吧Linux内核》一书的配套实验平台，包含Linux 5.0代码以及书上实验参考代码。
 使用busybox工具制作的最小文件系统，该最小系统仅仅包含了Linux系统最常用的命令，如ls，top等命令。如果要在此最小系统中进行systemtap以及kdump等试验的话，
 我们需要手动编译和安装这些工具，这个过程是相当复杂和繁琐的。为此，我们尝试使用Debian的根文件系统来构造一个小巧而且好用的实验平台。
@@ -13,13 +18,34 @@
 7. 支持在虚拟机里动态编译内核模块
 8. 支持Host主机和虚拟机共享文件
 
+本书推荐的实验环境如下。
+1. 主机硬件平台：Intel x86_84处理器兼容主机。
+2. 主机操作系统：Ubuntu Linux 20.04
+
+在Ubuntu Linux 20.04可以通过如下命令来安装本书需要的软件包。
+
+```
+$ sudo apt update -y
+$ sudo apt install net-tools libncurses5-dev libssl-dev build-essential openssl qemu-system-arm libncurses5-dev gcc-aarch64-linux-gnu git bison flex bc vim universal-ctags cscope cmake python3-dev gdb-multiarch openjdk-13-jre trace-cmd kernelshark bpfcc-tools cppcheck docker docker.io
+```
+
 ## 本书配套的其他资源
 请关注奔跑吧linux社区微信公众号：runninglinuxkernel
 
 ## 本书配套的视频课程
 若读者觉得阅读本书的文字版本不过瘾，想看笨叔录制的视频课程，请关注：
 1. 淘宝店：https://shop115683645.taobao.com/
-2. 微店：https://weidian.com/?userid=1352872851
+2. 微店：https://weidian.com/?userid=1692165428
+
+目前上线的配套课程有3个：
+1. 第一季旗舰篇：Linux内存管理
+![image](https://benshushu.coding.net/p/runninglinuxkernel_5.0/d/runninglinuxkernel_5.0/git/raw/rlk_5.0/images/1rd_training.jpg)
+2. 第二季旗舰篇：Linux进程管理、中断管理、锁机制三合一
+![image](https://benshushu.coding.net/p/runninglinuxkernel_5.0/d/runninglinuxkernel_5.0/git/raw/rlk_5.0/images/2rd-training.jpg)
+3. 第三季旗舰篇：ARM64体系结构与编程
+
+全球原创的ARM64实验，全球首个手把手解读ARMv8芯片手册，笨叔带您一起做实验，一起玩树莓派，一起进步！
+![image](https://benshushu.coding.net/p/runninglinuxkernel_5.0/d/runninglinuxkernel_5.0/git/raw/rlk_5.0/images/arm64_training.png)
 
 ## 使用O0编译的内核的好处
 这个runninglinuxkernel内核默认使用GCC的“O0”优化等级来编译的。
@@ -30,8 +56,10 @@
 
 ## 实验说明
 本书配套的实验代码是在kmodules/rlk_basic目录下面。
+
+
 ### 1. 编译运行
-在runninglinuxkernel_5.0目录下面有一个rootfs_arm64.tar.xz文件，这个是采用Ubuntu Linux 20.04系统的根文件系统制作而成。
+在runninglinuxkernel_5.0目录下面有一个rootfs_arm64.tar.xz文件，这个是采用Ubuntu/Debian系统的根文件系统制作而成。
 但是，这个根文件系统还只是一个半成品，我们还需要根据编译好的内核来安装内核镜像和内核模块，整个过程比较复杂。
 1. 编译内核。
 2. 编译内核模块。
@@ -60,7 +88,10 @@ $ sudo ./run_debian_arm64.sh build_rootfs
 ```
 $./run_debian_arm64.sh run
 ```
-系统登录名和密码请参考《奔跑吧Linux内核入门篇》第二版第一章实验1-3.
+系统登录名: benshushu
+密码：123
+
+切换到root用户：su root
 
 如果读者修改了runninglinuxkernel_5.0内核的配置文件，比如arch/arm64/config/debian_defconfig文件，那么需要重新编译内核以及更新根文件系统。
 ```
