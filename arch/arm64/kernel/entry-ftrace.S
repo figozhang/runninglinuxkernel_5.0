@@ -10,6 +10,7 @@
  */
 
 #include <linux/linkage.h>
+#include <asm/asm-offsets.h>
 #include <asm/assembler.h>
 #include <asm/ftrace.h>
 #include <asm/insn.h>
@@ -124,6 +125,7 @@ EXPORT_SYMBOL(_mcount)
 NOKPROBE(_mcount)
 
 #else /* CONFIG_DYNAMIC_FTRACE */
+#ifndef CONFIG_DYNAMIC_FTRACE_WITH_REGS
 /*
  * _mcount() is used to build the kernel with -pg option, but all the branch
  * instructions to _mcount() are replaced to NOP initially at kernel start up,
@@ -163,6 +165,121 @@ GLOBAL(ftrace_graph_call)		// ftrace_graph_caller();
 
 	mcount_exit
 ENDPROC(ftrace_caller)
+
+#ifdef CONFIG_FUNCTION_GRAPH_TRACER
+/*
+ * void ftrace_graph_caller(void)
+ *
+ * Called from _mcount() or ftrace_caller() when function_graph tracer is
+ * selected.
+ * This function w/ prepare_ftrace_return() fakes link register's value on
+ * the call stack in order to intercept instrumented function's return path
+ * and run return_to_handler() later on its exit.
+ */
+ENTRY(ftrace_graph_caller)
+       mcount_get_lr_addr      x0      // pointer to function's saved lr
+       mcount_get_pc           x1      // function's pc
+       mcount_get_parent_fp    x2      // parent's fp
+       bl      prepare_ftrace_return   // prepare_ftrace_return(&lr, pc, fp)
+
+       mcount_exit
+ENDPROC(ftrace_graph_caller)
+#endif /* CONFIG_FUNCTION_GRAPH_TRACER */
+
+#else /* CONFIG_DYNAMIC_FTRACE_WITH_REGS */
+
+       .macro  ftrace_regs_entry, allregs=0
+       /* Make room for pt_regs, plus a callee frame */
+       sub     sp, sp, #S_FRAME_SIZE
+
+       /* Save function arguments (and x9 for simplicity) */
+       stp     x0, x1, [sp, #S_X0]
+       stp     x2, x3, [sp, #S_X2]
+       stp     x4, x5, [sp, #S_X4]
+       stp     x6, x7, [sp, #S_X6]
+       stp     x8, x9, [sp, #S_X8]
+
+       /* Optionally save the callee-saved registers, always save the FP */
+       .if \allregs == 1
+       stp     x10, x11, [sp, #S_X10]
+       stp     x12, x13, [sp, #S_X12]
+       stp     x14, x15, [sp, #S_X14]
+       stp     x16, x17, [sp, #S_X16]
+       stp     x18, x19, [sp, #S_X18]
+       stp     x20, x21, [sp, #S_X20]
+       stp     x22, x23, [sp, #S_X22]
+       stp     x24, x25, [sp, #S_X24]
+       stp     x26, x27, [sp, #S_X26]
+       stp     x28, x29, [sp, #S_X28]
+       .else
+       str     x29, [sp, #S_FP]
+       .endif
+
+       /* Save the callsite's SP and LR */
+       add     x10, sp, #S_FRAME_SIZE
+       stp     x9, x10, [sp, #S_LR]
+
+       /* Save the PC after the ftrace callsite */
+       str     x30, [sp, #S_PC]
+
+       /* Create our frame record within pt_regs. */
+       stp     x10, x30, [sp, #S_STACKFRAME]
+       add     x29, sp, #S_STACKFRAME
+       .endm
+
+
+ENTRY(ftrace_regs_caller)
+       ftrace_regs_entry       1
+       b       ftrace_common
+ENDPROC(ftrace_regs_caller)
+
+ENTRY(ftrace_caller)
+       ftrace_regs_entry       0
+       b       ftrace_common
+ENDPROC(ftrace_caller)
+
+ENTRY(ftrace_common)
+       sub     x0, x30, #AARCH64_INSN_SIZE     // ip (callsite's BL insn)
+       mov     x1, x9                          // parent_ip (callsite's LR)
+       ldr_l   x2, function_trace_op           // op
+       mov     x3, sp                          // regs
+
+       .global ftrace_call
+ftrace_call:
+       bl      ftrace_stub
+
+#ifdef CONFIG_FUNCTION_GRAPH_TRACER
+       .global ftrace_graph_call
+ftrace_graph_call:     // ftrace_graph_caller();
+       nop                             // If enabled, this will be replaced
+                                       // "b ftrace_graph_caller"
+#endif
+
+/*
+ * At the callsite x0-x8 and x19-x30 were live. Any C code will have preserved
+ * x19-x29 per the AAPCS, and we created frame records upon entry, so we need
+ * to restore x0-x8, x29, and x30.
+ */
+ftrace_common_return:
+       /* Restore function arguments */
+       ldp     x0, x1, [sp]
+       ldp     x2, x3, [sp, #S_X2]
+       ldp     x4, x5, [sp, #S_X4]
+       ldp     x6, x7, [sp, #S_X6]
+       ldr     x8, [sp, #S_X8]
+
+       /* Restore the callsite's FP, LR, PC */
+       ldr     x29, [sp, #S_FP]
+       ldr     x30, [sp, #S_LR]
+       ldr     x9, [sp, #S_PC]
+
+       /* Restore the callsite's SP */
+       add     sp, sp, #S_FRAME_SIZE
+
+       ret     x9
+ENDPROC(ftrace_common)
+
+#endif /* CONFIG_DYNAMIC_FTRACE_WITH_REGS */
 #endif /* CONFIG_DYNAMIC_FTRACE */
 
 ENTRY(ftrace_stub)
