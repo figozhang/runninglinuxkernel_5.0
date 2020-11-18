@@ -1942,7 +1942,7 @@ void module_disable_ro(const struct module *mod)
 	frob_ro_after_init(&mod->core_layout, set_memory_rw);
 	frob_text(&mod->init_layout, set_memory_rw);
 	frob_rodata(&mod->init_layout, set_memory_rw);
-}
+}EXPORT_SYMBOL_GPL(module_disable_ro);
 
 void module_enable_ro(const struct module *mod, bool after_init)
 {
@@ -1956,7 +1956,7 @@ void module_enable_ro(const struct module *mod, bool after_init)
 
 	if (after_init)
 		frob_ro_after_init(&mod->core_layout, set_memory_ro);
-}
+}EXPORT_SYMBOL_GPL(module_enable_ro);
 
 static void module_enable_nx(const struct module *mod)
 {
@@ -3122,7 +3122,12 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 #endif
 #ifdef CONFIG_FTRACE_MCOUNT_RECORD
 	/* sechdrs[0].sh_size is always zero */
-	mod->ftrace_callsites = section_objs(info, "__mcount_loc",
+        mod->ftrace_callsites = section_objs(info,
+#ifdef CC_USING_PATCHABLE_FENTRY
+                                             "__patchable_function_entries",
+#else                                      
+                                             "__mcount_loc",
+#endif
 					     sizeof(*mod->ftrace_callsites),
 					     &mod->num_ftrace_callsites);
 #endif
