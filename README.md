@@ -180,6 +180,55 @@ root@ubuntu: /mnt/hello_world#
 ```
 root@ubuntu:/mnt/hello_world# insmod test.ko
 ```
+
+### 5. Livepatch support
+在rlk_5.0内核下添加了对arm64 livepatch的支持.
+1. 编译热补丁模块
+
+在内核源码根目录下samples/livepatch/目录中有相关用例，在ubuntu主机里编译相关模块
+```
+$ export ARCH=arm64
+$ export CROSS_COMPILE=aarch64-linux-gnu-
+
+$ cd samples/livepatch/
+$ make CONFIG_SAMPLE_LIVEPATCH=m -C ../../ M=$(pwd) modules
+```
+2. 启动内核
+```
+$ ./run_debian_arm64.sh run
+```
+将相关热补丁模块拷贝到共享目录
+```
+$ cp samples/livepatch/*.ko  kmodules/
+```
+3. 进入系统, 执行cat命令.
+```
+benshushu:mnt# cat /proc/cmdline 
+noinintrd sched_debug root=/dev/vda rootfstype=ext4 rw crashkernel=256M loglevel=8
+```
+
+加载热补丁模块后再次执行该命令:
+
+```
+benshushu:mnt# cat /proc/cmdline
+this has been live patched
+```
+
+可以看到内核函数cmdline_proc_show被替换成功。
+
+卸载热补丁模块
+```
+benshushu:mnt# echo 0 > /sys/kernel/livepatch/livepatch_sample/enabled
+[  702.928721] livepatch: 'livepatch_sample': starting unpatching transition
+benshushu:mnt# [  704.373970] livepatch: 'livepatch_sample': unpatching complete
+
+benshushu:mnt# cat /proc/cmdline
+noinintrd sched_debug root=/dev/vda rootfstype=ext4 rw crashkernel=256M loglevel=8
+```
+
+可以看到热补丁模块卸载后，cmdline_proc_show函数恢复到补丁前状态。
+
+
 ## 加入奔跑吧微信技术交流群
 
 我们建立奔跑吧技术交流群，可以先加我们的微信号，请注明加“加奔跑交流群”：
