@@ -4,6 +4,12 @@
 笨叔当fae的时候，去请教研发兄弟一些问题，时常会遭到白眼：我也不太懂，某某代码里有，你自己看啦，某某芯片手册有，你自己看啦。
 现在人生活压力忒大，生怕教会了别人，感觉明天就会失业了一样。笨叔觉得，好东西需要记录下来和大家分享，于是有了《奔跑吧linux内核》。
 
+### 奔跑吧面试必考题
+
+你想试试《奔跑吧linux内核》这本书适不适合你，你可以来试试做一下这份卷子，只要考分在90%以下，《奔跑吧Linux内核》就是为您量身打造的。
+
+[奔跑吧面试必考题](https://github.com/figozhang/runninglinuxkernel_5.0/blob/rlk_5.0_update_lab_source/Interview_questions.md)
+
 ## 实验平台说明
 本git repo是《奔跑吧Linux内核》一书的配套实验平台，包含Linux 5.0代码以及书上实验参考代码。
 使用busybox工具制作的最小文件系统，该最小系统仅仅包含了Linux系统最常用的命令，如ls，top等命令。如果要在此最小系统中进行systemtap以及kdump等试验的话，
@@ -18,9 +24,14 @@
 7. 支持在虚拟机里动态编译内核模块
 8. 支持Host主机和虚拟机共享文件
 
+本实验平台两个镜像：
+1. github：https://github.com/figozhang/runninglinuxkernel_5.0
+2. 腾讯git：https://benshushu.coding.net/public/runninglinuxkernel_5.0/runninglinuxkernel_5.0/git/files
+
 本书推荐的实验环境如下。
 1. 主机硬件平台：Intel x86_84处理器兼容主机。
 2. 主机操作系统：Ubuntu Linux 20.04
+3. GCC版本：9 (aarch64-linux-gnu-gcc-9)
 
 在Ubuntu Linux 20.04可以通过如下命令来安装本书需要的软件包。
 
@@ -28,6 +39,9 @@
 $ sudo apt update -y
 $ sudo apt install net-tools libncurses5-dev libssl-dev build-essential openssl qemu-system-arm libncurses5-dev gcc-aarch64-linux-gnu git bison flex bc vim universal-ctags cscope cmake python3-dev gdb-multiarch openjdk-13-jre trace-cmd kernelshark bpfcc-tools cppcheck docker docker.io
 ```
+本书配套的实验是在 kmodules 目录下面:  
+1. 奔跑吧进阶篇(卷1和卷2)对应的实验：kmodules/rlk_lab/rlk_senior
+2. 奔跑吧入门篇对应的实验：kmodules/rlk_lab/rlk_basic
 
 ## 本书配套的其他资源
 请关注奔跑吧linux社区微信公众号：runninglinuxkernel
@@ -182,7 +196,8 @@ root@ubuntu:/mnt/hello_world# insmod test.ko
 ```
 
 ### 5. Livepatch support
-在rlk_5.0内核下添加了对arm64 livepatch的支持.
+在rlk_5.0内核下添加了对arm64
+livepatch的支持。aarch64-linux-gnu-gcc版本必须是8或者以上。
 1. 编译热补丁模块
 
 在内核源码根目录下samples/livepatch/目录中有相关用例，在ubuntu主机里编译相关模块
@@ -227,6 +242,14 @@ noinintrd sched_debug root=/dev/vda rootfstype=ext4 rw crashkernel=256M loglevel
 ```
 
 可以看到热补丁模块卸载后，cmdline_proc_show函数恢复到补丁前状态。
+
+
+### 6. kdump的使用
+请参考《奔跑吧Linux内核》第二版卷2第5章相关内容。
+
+### 7. 调试ARM64 Linux内核
+请参考《奔跑吧Linux内核》第二版卷2第3.1章相关内容，里面详细介绍如何使用QEMU+GDB+Eclipse来调试arm64内核。
+
 
 
 ## 加入奔跑吧微信技术交流群
