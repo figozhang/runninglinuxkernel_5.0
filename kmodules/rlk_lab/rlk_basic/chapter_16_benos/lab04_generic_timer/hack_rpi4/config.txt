@@ -1,0 +1,22 @@
+# BenOS
+# for option pls see:https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
+# 
+
+[pi4]
+kernel=benos4.bin
+max_framebuffers=2
+enable_gic=0
+
+[pi3]
+kernel=benos3.bin
+
+[all]
+arm_64bit=1  #enable 64bit image
+
+enable_uart=1  #enable pl uart
+uart_2ndstage=1   #enable FW debug info
+dtbebug=1
+
+# kernel_old=1 # if we set it, the image will be load at 0x0, otherwise the 64bit image will be load on 0x80000
+#disable_commandline_tags=1 #Fix me, when set it, the image will be load on 0x0 ?
+

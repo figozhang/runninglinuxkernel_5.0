@@ -1,0 +1,11 @@
+*.cmd
+*.tmp
+*.exe
+*.o
+*.d
+lex.zconf.c
+zconf.tab.c
+zconf.hash.c
+conf
+mconf
+qconf

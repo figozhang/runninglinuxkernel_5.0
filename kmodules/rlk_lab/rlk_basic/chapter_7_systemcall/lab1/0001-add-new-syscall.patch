@@ -1,0 +1,74 @@
+From 7cab39516538765bf41a70f7906331df53750b83 Mon Sep 17 00:00:00 2001
+From: Ben Shushu <runninglinuxkernel@126.com>
+Date: Tue, 23 Feb 2021 21:59:40 +0800
+Subject: [PATCH] add new syscall
+
+add new syscall: getpuid
+
+Signed-off-by: Ben Shushu <runninglinuxkernel@126.com>
+---
+ arch/arm64/kernel/sys.c           | 17 +++++++++++++++++
+ include/linux/syscalls.h          |  1 +
+ include/uapi/asm-generic/unistd.h |  4 +++-
+ 3 files changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/kernel/sys.c b/arch/arm64/kernel/sys.c
+index b44065fb..18d29c74 100644
+--- a/arch/arm64/kernel/sys.c
++++ b/arch/arm64/kernel/sys.c
+@@ -47,6 +47,23 @@ SYSCALL_DEFINE1(arm64_personality, unsigned int, personality)
+ 	return ksys_personality(personality);
+ }
+ 
++SYSCALL_DEFINE2(getpuid, pid_t __user *, pid, uid_t __user *, uid)
++{
++       if (pid == NULL && uid == NULL)
++               return -EINVAL;
++
++       if (pid != NULL)
++               *pid = task_tgid_vnr(current);
++
++       printk("%s: pid=%d\n", __func__, *pid);
++
++       if (uid != NULL)
++               *uid = from_kuid_munged(current_user_ns(), current_uid());
++       printk("%s: upid=%d\n", __func__, *uid);
++
++       return 0;
++}
++
+ /*
+  * Wrappers to pass the pt_regs argument.
+  */
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 257cccba..9ecc1955 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1132,6 +1132,7 @@ asmlinkage long sys_mmap_pgoff(unsigned long addr, unsigned long len,
+ 			unsigned long fd, unsigned long pgoff);
+ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
+ 
++asmlinkage long sys_getpuid(pid_t __user *pid, uid_t __user *uid);
+ 
+ /*
+  * Not a real system call, but a placeholder for syscalls which are
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+index d9012729..6f685080 100644
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
+@@ -740,9 +740,11 @@ __SC_COMP(__NR_io_pgetevents, sys_io_pgetevents, compat_sys_io_pgetevents)
+ __SYSCALL(__NR_rseq, sys_rseq)
+ #define __NR_kexec_file_load 294
+ __SYSCALL(__NR_kexec_file_load,     sys_kexec_file_load)
++#define __NR_getpuid 295
++__SYSCALL(__NR_getpuid,     sys_getpuid)
+ 
+ #undef __NR_syscalls
+-#define __NR_syscalls 295
++#define __NR_syscalls 296
+ 
+ /*
+  * 32 bit systems traditionally used different
+-- 
+2.25.1
+

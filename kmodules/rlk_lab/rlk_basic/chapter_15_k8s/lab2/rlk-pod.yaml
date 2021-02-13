@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rlk-test
+spec:
+  NodeName:
+  containers:
+    - name: rlk-container
+      image: registry.cn-hangzhou.aliyuncs.com/benshushu/rlk_test:v1
+      command: ["/bin/bash","-c","while true; do sleep 1000; done"]
+      imagePullPolicy: Always

@@ -1,0 +1,17 @@
+1.compile:
+	cd /mnt/rlk_basic/chapter_14/lab3/
+	make
+2.test:
+	insmod 
+	cd /
+	mkfs.ext2 /dev/myramdisk
+	mkdir ramdisk
+	mount /dev/myramdisk ./ramdisk/
+	cd ./ramdisk
+3.result:
+root@ubuntu:ramdisk# ls
+lost+found
+root@ubuntu:ramdisk# 
+
+
+		

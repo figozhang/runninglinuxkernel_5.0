@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rlk-deploy
+  namespace: default
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: rlk-app
+      release: canary
+  template:
+    metadata:
+      labels:
+        app: rlk-app
+        release: canary
+    spec:
+      containers:
+      - name: rlk-app
+        image: registry.cn-hangzhou.aliyuncs.com/benshushu/rlk_test:v1
+        command: ["/bin/bash","-c","while true; do sleep 1000; done"]
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+
