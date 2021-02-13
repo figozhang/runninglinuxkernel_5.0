@@ -1,0 +1,13 @@
+#
+# Automatically generated make config: don't edit
+# BenOS version: 1.0.0.0
+# Mon May  4 00:10:09 2020
+#
+CONFIG_ARM64=y
+CONFIG_64BIT=y
+CONFIG_ARCH_BCM2835=y
+# CONFIG_ARCH_VEXPRESS is not set
+CONFIG_BOARD_PI3B=y
+# CONFIG_BOARD_PI4B is not set
+CONFIG_PI_MINI_UART=y
+# CONFIG_PI_PL_UART is not set

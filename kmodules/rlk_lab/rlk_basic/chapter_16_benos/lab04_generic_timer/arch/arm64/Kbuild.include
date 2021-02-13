@@ -1,0 +1,7 @@
+
+ifeq ($(COMPILER),)
+COMPILER	:= gcc
+endif
+ifeq ($(CROSS_COMPILE),)
+CROSS_COMPILE	:= aarch64-linux-gnu-
+endif

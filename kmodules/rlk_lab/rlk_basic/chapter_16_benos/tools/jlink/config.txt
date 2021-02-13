@@ -1,0 +1,24 @@
+# BenOS for JLINK debug
+# for option pls see:https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
+# 
+
+[pi4]
+kernel=loop.bin
+
+[pi3]
+kernel=loop.bin
+
+[all]
+arm_64bit=1  #enable 64bit image
+enable_uart=1  #enable pl uart
+uart_2ndstage=1   #enable FW debug info
+
+enable_jtag_gpio=1
+gpio=22-27=a4
+init_uart_clock=48000000
+init_uart_baud=115200
+
+
+#kernel_old=1 # if we set it, the image will be load at 0x0, otherwise the 64bit image will be load on 0x80000
+#disable_commandline_tags=1 #Fix me, when set it, the image will be load on 0x0 ?
+
