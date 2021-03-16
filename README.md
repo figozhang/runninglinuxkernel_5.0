@@ -36,7 +36,7 @@
 
 你想试试《奔跑吧linux内核》这本书适不适合你，你可以来试试做一下这份卷子，只要考分在90%以下，《奔跑吧Linux内核》就是为您量身打造的。
 
-[奔跑吧面试必考题](https://github.com/figozhang/runninglinuxkernel_5.0/blob/rlk_5.0_update_lab_source/Interview_questions.md)
+[奔跑吧面试必考题](./Interview_questions.md)
 
 ## 实验平台说明
 本git repo是《奔跑吧Linux内核》第二版卷1卷2以及入门篇三本书的配套实验平台，包含Linux 5.0代码以及书上实验参考代码。
