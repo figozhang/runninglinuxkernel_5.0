@@ -199,7 +199,7 @@ static int __init simple_char_init(void)
 			goto free_kfifo;
 		}
 
-		printk("mydemo_fifo=%p\n", &device->mydemo_fifo);
+		printk("mydemo_fifo=%px\n", &device->mydemo_fifo);
 
 	}
 
