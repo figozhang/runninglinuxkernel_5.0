@@ -15,6 +15,14 @@ rootfs_image=$PWD/rootfs_debian_arm64.ext4
 rootfs_size=4096
 SMP="-smp 4"
 
+QEMU=qemu-system-aarch64
+
+rootfs_arg="root=/dev/vda rootfstype=ext4 rw"
+kernel_arg="noinintrd nokaslr"
+crash_arg="crashkernel=256M"
+dyn_arg="vfio.dyndbg=+pflmt irq_gic_v3_its.dyndbg=+pflmt iommu.dyndbg=+pflmt irqdomain.dyndbg=+pflmt"
+debug_arg="loglevel=8 sched_debug"
+
 if [ $# -lt 1 ]; then
 	echo "Usage: $0 [arg]"
 	echo "build_kernel: build the kernel image."
@@ -123,14 +131,17 @@ build_rootfs(){
 }
 
 run_qemu_debian(){
-		qemu-system-aarch64 -m 1024 -cpu max,sve=on,sve256=on -M virt,gic-version=3,its=on,iommu=smmuv3\
+		cmd="$QEMU -m 1024 -cpu max,sve=on,sve256=on -M virt,gic-version=3,its=on,iommu=smmuv3\
 			-nographic $SMP -kernel arch/arm64/boot/Image \
-			-append "noinintrd sched_debug root=/dev/vda rootfstype=ext4 rw crashkernel=256M loglevel=8" \
-			-drive if=none,file=$rootfs_image,id=hd0 \
-			-device virtio-blk-device,drive=hd0 \
-			--fsdev local,id=kmod_dev,path=./kmodules,security_model=none \
+			-append \"$kernel_arg $debug_arg $rootfs_arg $crash_arg $dyn_arg\"\
+			-drive if=none,file=$rootfs_image,id=hd0\
+			-device virtio-blk-device,drive=hd0\
+			--fsdev local,id=kmod_dev,path=./kmodules,security_model=none\
 			-device virtio-9p-pci,fsdev=kmod_dev,mount_tag=kmod_mount\
-			$DBG
+			$DBG"
+		echo "running:"
+		echo $cmd
+		eval $cmd
 
 }
 
