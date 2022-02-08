@@ -18,7 +18,7 @@ SMP="-smp 4"
 QEMU=qemu-system-aarch64
 
 rootfs_arg="root=/dev/vda rootfstype=ext4 rw"
-kernel_arg="noinintrd nokaslr"
+kernel_arg="noinitrd nokaslr"
 crash_arg="crashkernel=256M"
 dyn_arg="vfio.dyndbg=+pflmt irq_gic_v3_its.dyndbg=+pflmt iommu.dyndbg=+pflmt irqdomain.dyndbg=+pflmt"
 debug_arg="loglevel=8 sched_debug"
