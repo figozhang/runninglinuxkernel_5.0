@@ -10,6 +10,32 @@
 #include <linux/binfmts.h>
 
 /*
+ * Tracepoint for accounting minvruntime
+ */
+TRACE_EVENT(sched_stat_minvruntime,
+
+	TP_PROTO(struct task_struct *tsk, u64 minvruntime),
+
+	TP_ARGS(tsk, minvruntime),
+
+	TP_STRUCT__entry(
+		__array( char,      comm,      TASK_COMM_LEN)
+		__field( pid_t,      pid      )
+		__field( u64,      minvruntime)
+		),
+	TP_fast_assign(
+
+		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
+		__entry->pid            = tsk->pid;
+		__entry->minvruntime      = minvruntime;
+		),
+
+	TP_printk("comm=%s pid=%d minvruntime=%Lu [ns]",
+		__entry->comm, __entry->pid,
+		(unsigned long long)__entry->minvruntime)
+);
+
+/*
  * Tracepoint for calling kthread_stop, performed to end a kthread:
  */
 TRACE_EVENT(sched_kthread_stop,
