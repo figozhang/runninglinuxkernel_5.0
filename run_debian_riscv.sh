@@ -10,6 +10,7 @@ export INSTALL_HDR_PATH=$LROOT/rootfs_debian_riscv/usr/
 
 kernel_build=$PWD/rootfs_debian_riscv/usr/src/linux/
 
+rootfs_size=2048
 SMP="-smp 4"
 
 if [ $# -lt 1 ]; then
@@ -39,7 +40,7 @@ prepare_rootfs(){
 }
 
 build_kernel_devel(){
-	kernver="$(make -s kernelrelease)"
+	kernver="$(cat include/config/kernel.release)"
 	echo "kernel version: $kernver"
 
 	mkdir -p $kernel_build
@@ -64,12 +65,12 @@ build_rootfs(){
 		if [ ! -f $LROOT/rootfs_debian_riscv.ext4 ]; then
 			make install
 			make modules_install -j $JOBCOUNT
-			make headers_install
+			# make headers_install
 
 			build_kernel_devel
 
 			echo "making image..."
-			dd if=/dev/zero of=rootfs_debian_riscv.ext4 bs=1M count=8192
+			dd if=/dev/zero of=rootfs_debian_riscv.ext4 bs=1M count=$rootfs_size
 			mkfs.ext4 rootfs_debian_riscv.ext4
 			mkdir -p tmpfs
 			echo "copy data into rootfs..."

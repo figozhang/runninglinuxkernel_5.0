@@ -12,7 +12,7 @@ kernel_build=$PWD/rootfs_debian_arm64/usr/src/linux/
 rootfs_path=$PWD/rootfs_debian_arm64
 rootfs_image=$PWD/rootfs_debian_arm64.ext4
 
-rootfs_size=4096
+rootfs_size=2048
 SMP="-smp 4"
 
 QEMU=qemu-system-aarch64
@@ -54,7 +54,7 @@ prepare_rootfs(){
 }
 
 build_kernel_devel(){
-	kernver="$(make -s kernelrelease)"
+	kernver="$(cat include/config/kernel.release)"
 	echo "kernel version: $kernver"
 
 	mkdir -p $kernel_build
@@ -111,7 +111,7 @@ build_rootfs(){
 		if [ ! -f $rootfs_image ]; then
 			make install
 			make modules_install -j $JOBCOUNT
-			make headers_install
+			# make headers_install
 
 			build_kernel_devel
 
