@@ -39,6 +39,9 @@
 [奔跑吧面试必考题](./Interview_questions.md)
 
 ## 实验平台说明
+
+我们强烈推荐读者使用我们制作好的vmware image，开箱即用，下载方式：关注“奔跑吧linux社区”微信公众号，输入“奔跑吧2”下载。   
+
 本git repo是《奔跑吧Linux内核》第二版卷1卷2以及入门篇三本书的配套实验平台，包含Linux 5.0代码以及书上实验参考代码。
 使用busybox工具制作的最小文件系统，该最小系统仅仅包含了Linux系统最常用的命令，如ls，top等命令。如果要在此最小系统中进行systemtap以及kdump等试验的话，
 我们需要手动编译和安装这些工具，这个过程是相当复杂和繁琐的。为此，我们尝试使用Debian的根文件系统来构造一个小巧而且好用的实验平台。
@@ -51,10 +54,6 @@
 6. 在线安装Debian软件包
 7. 支持在虚拟机里动态编译内核模块
 8. 支持Host主机和虚拟机共享文件
-
-本实验平台两个镜像：
-1. github：https://github.com/figozhang/runninglinuxkernel_5.0
-2. 腾讯git：https://benshushu.coding.net/public/runninglinuxkernel_5.0/runninglinuxkernel_5.0/git/files
 
 本书推荐的实验环境如下。
 1. 主机硬件平台：Intel x86_84处理器兼容主机。
@@ -278,9 +277,34 @@ noinintrd sched_debug root=/dev/vda rootfstype=ext4 rw crashkernel=256M loglevel
 ### 7. 调试ARM64 Linux内核
 请参考《奔跑吧Linux内核》第二版卷2第3.1章相关内容，里面详细介绍如何使用QEMU+GDB+Eclipse来调试arm64内核。
 
+### 8. apt update证书问题
+如果在QEMU+ARM64平台里apt更新失败，如下面日志显示。   
+```
+benshushu:~# apt update
+Get:1 http://mirrors.ustc.edu.cn/debian unstable InRelease [165 kB]
+Err:1 http://mirrors.ustc.edu.cn/debian unstable InRelease
+  The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 648ACFD622F3D138 NO_PUBKEY 0E98404D386FA1D9
+Reading package lists... Done
+W: GPG error: http://mirrors.ustc.edu.cn/debian unstable InRelease: The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 648ACFD622F3D138 NO_PUBKEY 0E98404D386FA1D9
+E: The repository 'http://mirrors.ustc.edu.cn/debian unstable InRelease' is not signed.
+N: Updating from such a repository can't be done securely, and is therefore disabled by default.
+N: See apt-secure(8) manpage for repository creation and user configuration details.
+benshushu:~#
+```
 
+这个是由于PGP证书的问题，上述日志显示有两个证书有问题，我们可以通过如下方式来修复。 
+```
+# apt-key adv --keyserver pgp.mit.edu --recv-keys 648ACFD622F3D138 //其中648ACFD622F3D138为有问题的证书Key
+
+# apt-key adv --keyserver pgp.mit.edu --recv-keys 0E98404D386FA1D9 //其中0E98404D386FA1D9为有问题的证书KEY
+```
+
+上述两个证书修复之后就可以执行apt update操作了。
+```
+# apt update
+```
 
 ## 加入奔跑吧微信技术交流群
 
-我们建立奔跑吧技术交流群，可以先加我们的微信号，请注明加“加奔跑交流群”：
-1. 笨叔微信号：runninglinuxkernel （笨叔工作忙，此微信不闲聊）
+我们建立奔跑吧读者交流群，可以先加我们的客服微信号，请出示奔跑吧系列图书购买截图，以方面我们邀请您进读者群（我们目的是邀请读者进群，过滤机器人，销售，HR，猎头等）：
+1. 客服微信号：runninglinuxkernel   
