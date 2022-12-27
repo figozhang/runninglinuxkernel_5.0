@@ -110,9 +110,15 @@ $ sudo apt install net-tools libncurses5-dev libssl-dev build-essential openssl 
 6. 制作ext4根文件系统。
 这个过程比较繁琐，我们制作了一个脚本来简化上述过程。
 注意，该脚本会使用dd命令来生成一个4GB大小的镜像文件，因此主机系统需要保证至少10 GB的空余磁盘空间。若读者需要生成一个更大的根文件系统镜像，可以修改run_rlk_arm64.sh这个脚本文件。
-首先，编译内核。
+
+如果在编译内核之前想进入menuconfig界面来配置内核：
 ```
 $ cd runninglinuxkernel_5.0
+$ ./run_debian_arm64.sh menuconfig
+```
+
+编译内核。
+```
 $ ./run_debian_arm64.sh build_kernel
 ```
 
