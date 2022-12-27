@@ -15,9 +15,11 @@ SMP="-smp 4"
 
 if [ $# -lt 1 ]; then
 	echo "Usage: $0 [arg]"
+	echo "menuconfig: reconfig the kernel"
 	echo "build_kernel: build the kernel image."
 	echo "build_rootfs: build the rootfs image."
-	echo " run:  run debian system."
+	echo "run:  run debian system."
+	echo "run debug: enable gdb debug server."
 fi
 
 if [ $# -eq 2 ] && [ $2 == "debug" ]; then
@@ -30,6 +32,13 @@ make_kernel_image(){
 		echo "start build kernel image..."
 		make debian_defconfig
 		make -j $JOBCOUNT
+}
+
+make_menuconfig(){
+               echo "start re-config kernel"
+               make debian_defconfig
+               make menuconfig
+               cp .config $PWD/arch/riscv/configs/debian_defconfig
 }
 
 prepare_rootfs(){
@@ -97,6 +106,10 @@ case $1 in
 		make_kernel_image
 		#prepare_rootfs
 		#build_rootfs
+		;;
+
+	menuconfig)
+		make_menuconfig
 		;;
 	
 	build_rootfs)

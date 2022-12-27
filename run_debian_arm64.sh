@@ -25,6 +25,7 @@ debug_arg="loglevel=8 sched_debug"
 
 if [ $# -lt 1 ]; then
 	echo "Usage: $0 [arg]"
+	echo "menuconfig: reconfig the kernel"
 	echo "build_kernel: build the kernel image."
 	echo "build_rootfs: build the rootfs image, need root privilege"
 	echo "update_rootfs: update kernel modules for rootfs image, need root privilege."
@@ -42,6 +43,13 @@ make_kernel_image(){
 		echo "start build kernel image..."
 		make debian_defconfig
 		make -j $JOBCOUNT
+}
+
+make_menuconfig(){
+               echo "start re-config kernel"
+               make debian_defconfig
+               make menuconfig
+               cp .config $PWD/arch/arm64/configs/debian_defconfig
 }
 
 prepare_rootfs(){
@@ -152,6 +160,10 @@ case $1 in
 		#build_rootfs
 		;;
 	
+	menuconfig)
+		make_menuconfig
+		;;
+
 	build_rootfs)
 		#make_kernel_image
 		check_root
