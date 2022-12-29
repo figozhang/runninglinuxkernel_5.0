@@ -9,19 +9,26 @@ static long __percpu *cpualloc;
 static int __init my_init(void)
 {
 	int cpu;
+	int cur_cpu = raw_smp_processor_id();
 
-	pr_info("module loaded at 0x%p\n", my_init);
+	pr_info("current cpu %d\n", cur_cpu);
 
-	/* modify the cpuvar value */
+	/* print the init value of cpuvar*/
 	for_each_possible_cpu(cpu){
-		per_cpu(cpuvar, cpu) = 15;
-		pr_info("init: cpuvar on cpu%d  = %ld\n",
-			cpu, get_cpu_var(cpuvar));
-		put_cpu_var(cpuvar);
-
+		pr_info("init: cpuvar on cpu%d  = %ld\n", cpu, per_cpu(cpuvar, cpu));
 	}
 
-	__this_cpu_write(cpuvar, 20);
+	/* set cpu0 value */
+	per_cpu(cpuvar, 0) = 15;
+	per_cpu(cpuvar, 1) = 20;
+
+	for_each_possible_cpu(cpu){
+		pr_info("after motify: cpuvar on cpu%d  = %ld\n", cpu, per_cpu(cpuvar, cpu));
+	}
+
+	__this_cpu_write(cpuvar, 22);
+	pr_info("cpu%d has motify to %ld\n", cur_cpu, get_cpu_var(cpuvar));
+	put_cpu_var(cpuvar);
 
 	/* alloc a percpu value */
 	cpualloc = alloc_percpu(long);
@@ -47,8 +54,6 @@ static void __exit my_exit(void)
 	}
 
 	free_percpu(cpualloc);
-
-	pr_info("Bye: module unloaded from 0x%p\n", my_exit);
 }
 
 module_init(my_init);
