@@ -33,7 +33,7 @@ fi
 make_kernel_image(){
 		echo "start build kernel image..."
 		make debian_defconfig
-		make -j $JOBCOUNT
+		make -j $JOBCOUNT V=1
 }
 
 prepare_rootfs(){
