@@ -14,9 +14,6 @@
 *.o
 scripts/basic/modules.order
 scripts/kconfig/zconf.*
-_output_arm64/
-_output_x86_64/
-_output_riscv/
 .config
 vmlinux
 *generated*
@@ -36,3 +33,4 @@ scripts/dtc/dtc-parser.tab.*
 scripts/genksyms/lex.lex.c
 scripts/genksyms/parse.tab.*
 scripts/mod/devicetable-offsets.s
+rootfs_debian_*
