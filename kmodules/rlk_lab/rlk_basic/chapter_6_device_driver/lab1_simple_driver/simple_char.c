@@ -38,7 +38,7 @@ static ssize_t
 demodrv_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	printk("%s enter\n", __func__);
-	return 0;
+	return count;
 
 }
 
@@ -50,6 +50,15 @@ static const struct file_operations demodrv_fops = {
 	.write = demodrv_write
 };
 
+
+// devnode 回调函数
+static char *demo_devnode(struct device *dev, umode_t *mode)
+{
+    if (mode != NULL) {
+        *mode = 0666; // 所有用户可读写
+    }
+    return NULL;
+}
 
 static int __init simple_char_init(void)
 {
@@ -77,6 +86,10 @@ static int __init simple_char_init(void)
 	}
 
 	demo_class = class_create(THIS_MODULE, "demo_class"); 
+    
+    // 设置设备节点权限
+    demo_class->devnode = demo_devnode;
+    
 	device_create(demo_class, NULL, MKDEV(demo_major, 0), NULL, "demo_drv"); 
 
 	printk("succeeded register char device: %s\n", DEMO_NAME);
