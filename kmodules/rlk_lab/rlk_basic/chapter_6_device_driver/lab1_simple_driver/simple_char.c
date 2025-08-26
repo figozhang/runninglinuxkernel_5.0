@@ -8,6 +8,9 @@
 static dev_t dev;
 static struct cdev *demo_cdev;
 static signed count = 1;
+static struct class *demo_class = NULL;
+static int demo_major;
+
 
 static int demodrv_open(struct inode *inode, struct file *file)
 {
@@ -35,7 +38,7 @@ static ssize_t
 demodrv_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	printk("%s enter\n", __func__);
-	return 0;
+	return count;
 
 }
 
@@ -47,6 +50,15 @@ static const struct file_operations demodrv_fops = {
 	.write = demodrv_write
 };
 
+
+// devnode 回调函数
+static char *demo_devnode(struct device *dev, umode_t *mode)
+{
+    if (mode != NULL) {
+        *mode = 0666; // 所有用户可读写
+    }
+    return NULL;
+}
 
 static int __init simple_char_init(void)
 {
@@ -64,6 +76,7 @@ static int __init simple_char_init(void)
 		goto unregister_chrdev;
 	}
 
+	demo_major = MAJOR(dev);
 	cdev_init(demo_cdev, &demodrv_fops);
 	
 	ret = cdev_add(demo_cdev, dev, count);
@@ -71,6 +84,13 @@ static int __init simple_char_init(void)
 		printk("cdev_add failed\n");
 		goto cdev_fail;
 	}
+
+	demo_class = class_create(THIS_MODULE, "demo_class"); 
+    
+    // 设置设备节点权限
+    demo_class->devnode = demo_devnode;
+    
+	device_create(demo_class, NULL, MKDEV(demo_major, 0), NULL, "demo_drv"); 
 
 	printk("succeeded register char device: %s\n", DEMO_NAME);
 	printk("Major number = %d, minor number = %d\n",
@@ -90,6 +110,12 @@ static void __exit simple_char_exit(void)
 {
 	printk("removing device\n");
 
+	if( demo_class != NULL )
+	{
+		device_destroy(demo_class,  MKDEV(demo_major, 0));
+		class_destroy(demo_class);
+	}
+    
 	if (demo_cdev)
 		cdev_del(demo_cdev);
 
